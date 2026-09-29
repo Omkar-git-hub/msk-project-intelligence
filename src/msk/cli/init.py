@@ -132,6 +132,12 @@ def run_init(
     table.add_row("Symbols Discovered", str(summary.total_symbols))
     table.add_row("External Dependencies", str(summary.total_dependencies))
     table.add_row("Knowledge Relationships", str(summary.total_relationships))
+    if summary.total_tests:
+        table.add_row("Tests Discovered", str(summary.total_tests))
+    if summary.total_api_endpoints:
+        table.add_row("API Endpoints", str(summary.total_api_endpoints))
+    if summary.total_infrastructure:
+        table.add_row("Infrastructure Configs", str(summary.total_infrastructure))
     if git_state.is_repo:
         table.add_row("Git Branch", git_state.branch or "detached")
         table.add_row("Git Clean", "Yes" if not git_state.is_dirty else f"No ({len(git_state.modified_files)} modified)")
@@ -139,5 +145,6 @@ def run_init(
     table.add_row("JSON Exports", ".msk/exports/")
 
     console.print(table)
+
     console.print()
     console.print("[dim]Run [bold]msk status[/bold] to inspect or [bold]msk doctor[/bold] to check system health.[/dim]")

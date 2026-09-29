@@ -1,5 +1,6 @@
 """AST symbol extraction for Python, Java, JavaScript, and TypeScript."""
 
+import re
 from pydantic import BaseModel, Field
 import tree_sitter
 
@@ -14,6 +15,11 @@ class ExtractedSymbol(BaseModel):
     parent_symbol: str | None = None
     visibility: str = "public"  # public, private, protected
     parameters: list[str] = Field(default_factory=list)
+    calls: list[str] = Field(default_factory=list)
+    is_test: bool = False
+    is_api_endpoint: bool = False
+    api_route: str | None = None
+    api_method: str | None = None
 
 
 def _node_text(node: tree_sitter.Node, code: bytes = b"") -> str:
@@ -41,6 +47,113 @@ def _node_lines(node: tree_sitter.Node, code: bytes = b"") -> tuple[int, int]:
     return (line_start, line_end)
 
 
+def _extract_calls_from_node(body_node: tree_sitter.Node | None, code: bytes) -> list[str]:
+    """Extract called function/method names from an AST node body safely.
+
+    Uses an iterative traversal to prevent recursion depth issues and immediately
+    extracts pure Python strings without holding references to C node memory.
+    """
+    if not body_node or not code:
+        return []
+
+    calls: list[str] = []
+    seen: set[str] = set()
+    stack = [body_node]
+
+    while stack:
+        curr = stack.pop()
+        ntype = curr.type
+
+        # Python call: (call function: ...)
+        if ntype == "call":
+            func = curr.child_by_field_name("function")
+            if func:
+                if func.type == "identifier":
+                    name = _node_text(func, code)
+                    if name and name not in seen:
+                        seen.add(name)
+                        calls.append(name)
+                elif func.type == "attribute":
+                    attr = func.child_by_field_name("attribute")
+                    if attr:
+                        name = _node_text(attr, code)
+                        if name and name not in seen:
+                            seen.add(name)
+                            calls.append(name)
+                    attr = None
+            func = None
+
+        # Java method invocation or constructor
+        elif ntype == "method_invocation":
+            mname = curr.child_by_field_name("name")
+            if mname:
+                name = _node_text(mname, code)
+                if name and name not in seen:
+                    seen.add(name)
+                    calls.append(name)
+            mname = None
+        elif ntype == "object_creation_expression":
+            tname = curr.child_by_field_name("type")
+            if tname:
+                name = _node_text(tname, code)
+                if name and name not in seen:
+                    seen.add(name)
+                    calls.append(name)
+            tname = None
+
+        # JS/TS call expression or new
+        elif ntype == "call_expression":
+            func = curr.child_by_field_name("function")
+            if func:
+                if func.type == "identifier":
+                    name = _node_text(func, code)
+                    if name and name not in seen:
+                        seen.add(name)
+                        calls.append(name)
+                elif func.type == "member_expression":
+                    prop = func.child_by_field_name("property")
+                    if prop:
+                        name = _node_text(prop, code)
+                        if name and name not in seen:
+                            seen.add(name)
+                            calls.append(name)
+                    prop = None
+            func = None
+        elif ntype == "new_expression":
+            ctor = curr.child_by_field_name("constructor")
+            if ctor:
+                name = _node_text(ctor, code)
+                if name and name not in seen:
+                    seen.add(name)
+                    calls.append(name)
+            ctor = None
+
+        for child in curr.children:
+            stack.append(child)
+        curr = None
+
+    return calls
+
+
+def _parse_api_decorator(dec_text: str) -> tuple[bool, str | None, str | None]:
+    """Parse HTTP route and method from decorator text.
+
+    E.g., @app.get('/orders') -> (True, '/orders', 'GET')
+          @router.post('/checkout') -> (True, '/checkout', 'POST')
+    """
+    methods = ["get", "post", "put", "delete", "patch", "options", "head"]
+    pattern = rf"\.(?:{'|'.join(methods)})\s*\(\s*['\"]([^'\"]+)['\"]"
+    match = re.search(pattern, dec_text, re.IGNORECASE)
+    if match:
+        route = match.group(1)
+        # extract method name from decorator call
+        for m in methods:
+            if f".{m}(" in dec_text.lower():
+                return (True, route, m.upper())
+        return (True, route, "GET")
+    return (False, None, None)
+
+
 def extract_symbols(tree: tree_sitter.Tree, language: str, code: bytes = b"") -> list[ExtractedSymbol]:
     """Extract symbols from an AST tree based on language grammar."""
     if language == "python":
@@ -60,7 +173,19 @@ def extract_symbols(tree: tree_sitter.Tree, language: str, code: bytes = b"") ->
 def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[ExtractedSymbol]:
     symbols: list[ExtractedSymbol] = []
 
-    for node in root.children:
+    for raw_node in root.children:
+        node = raw_node
+        decorators: list[str] = []
+
+        # Handle decorated definitions: (@dec ... def func(): ...)
+        if node.type == "decorated_definition":
+            for child in node.children:
+                if child.type == "decorator":
+                    decorators.append(_node_text(child, code))
+                elif child.type in ("class_definition", "function_definition"):
+                    node = child
+                child = None
+
         if node.type == "class_definition":
             name_node = node.child_by_field_name("name")
             if not name_node:
@@ -70,6 +195,8 @@ def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[Extract
             name_node = None  # release node reference
             if not class_name:
                 continue
+
+            is_test_class = class_name.startswith("Test") or class_name.endswith("Test")
             l_start, l_end = _node_lines(node, code)
             symbols.append(
                 ExtractedSymbol(
@@ -78,6 +205,7 @@ def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[Extract
                     line_start=l_start,
                     line_end=l_end,
                     visibility="private" if class_name.startswith("_") else "public",
+                    is_test=is_test_class,
                 )
             )
 
@@ -85,8 +213,18 @@ def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[Extract
             body = node.child_by_field_name("body")
             if body:
                 for child in body.children:
-                    if child.type == "function_definition":
-                        mname_node = child.child_by_field_name("name")
+                    m_node = child
+                    m_decs: list[str] = []
+                    if m_node.type == "decorated_definition":
+                        for c in m_node.children:
+                            if c.type == "decorator":
+                                m_decs.append(_node_text(c, code))
+                            elif c.type == "function_definition":
+                                m_node = c
+                            c = None
+
+                    if m_node.type == "function_definition":
+                        mname_node = m_node.child_by_field_name("name")
                         if not mname_node:
                             mname_node = None
                             continue
@@ -100,7 +238,24 @@ def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[Extract
                             if method_name.startswith("_") and method_name != "__init__"
                             else "public"
                         )
-                        cl_start, cl_end = _node_lines(child, code)
+                        cl_start, cl_end = _node_lines(m_node, code)
+                        mbody = m_node.child_by_field_name("body")
+                        calls = _extract_calls_from_node(mbody, code)
+                        mbody = None
+
+                        is_test_method = (
+                            is_test_class
+                            or method_name.startswith("test_")
+                            or method_name.endswith("_test")
+                        )
+
+                        # Check API decorator
+                        is_api, api_route, api_method = False, None, None
+                        for d in m_decs:
+                            is_api, api_route, api_method = _parse_api_decorator(d)
+                            if is_api:
+                                break
+
                         symbols.append(
                             ExtractedSymbol(
                                 name=method_name,
@@ -109,10 +264,16 @@ def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[Extract
                                 line_end=cl_end,
                                 parent_symbol=class_name,
                                 visibility=vis,
+                                calls=calls,
+                                is_test=is_test_method,
+                                is_api_endpoint=is_api,
+                                api_route=api_route,
+                                api_method=api_method,
                             )
                         )
-                    child = None  # release node reference
-                body = None  # release node reference
+                    child = None
+                    m_node = None
+                body = None
 
         elif node.type == "function_definition":
             name_node = node.child_by_field_name("name")
@@ -123,7 +284,20 @@ def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[Extract
             name_node = None  # release node reference
             if not fname:
                 continue
+
             fl_start, fl_end = _node_lines(node, code)
+            fbody = node.child_by_field_name("body")
+            calls = _extract_calls_from_node(fbody, code)
+            fbody = None
+
+            is_test_func = fname.startswith("test_") or fname.endswith("_test")
+
+            is_api, api_route, api_method = False, None, None
+            for d in decorators:
+                is_api, api_route, api_method = _parse_api_decorator(d)
+                if is_api:
+                    break
+
             symbols.append(
                 ExtractedSymbol(
                     name=fname,
@@ -131,22 +305,20 @@ def _extract_python_symbols(root: tree_sitter.Node, code: bytes) -> list[Extract
                     line_start=fl_start,
                     line_end=fl_end,
                     visibility="private" if fname.startswith("_") else "public",
+                    calls=calls,
+                    is_test=is_test_func,
+                    is_api_endpoint=is_api,
+                    api_route=api_route,
+                    api_method=api_method,
                 )
             )
 
-
-    # Explicitly null loop variables so tree-sitter Nodes are freed via
-    # reference-counting rather than waiting for the cyclic GC.  On Python
-    # 3.14 / tree-sitter 0.26 / Windows, Nodes whose owning Tree is swept
-    # by the GC cause an access violation if any Python Node object is still
-    # alive at GC sweep time.  Nulling here guarantees refcount drops to 0
-    # immediately and the Tree frees cleanly.
     try:
         del node  # noqa: F821
+        del raw_node  # noqa: F821
     except NameError:
         pass
     return symbols
-
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +345,7 @@ def _extract_java_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracted
             elif node.type == "enum_declaration":
                 kind = "enum"
 
-            # Check visibility modifiers
+            is_test_class = entity_name.startswith("Test") or entity_name.endswith("Test")
             vis = _get_java_visibility(node)
             l_start, l_end = _node_lines(node, code)
             symbols.append(
@@ -183,6 +355,7 @@ def _extract_java_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracted
                     line_start=l_start,
                     line_end=l_end,
                     visibility=vis,
+                    is_test=is_test_class,
                 )
             )
 
@@ -200,6 +373,19 @@ def _extract_java_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracted
                         if not mname:
                             continue
                         ml_start, ml_end = _node_lines(member, code)
+                        mbody = member.child_by_field_name("body")
+                        calls = _extract_calls_from_node(mbody, code)
+                        mbody = None
+
+                        is_test_method = (
+                            is_test_class
+                            or mname.startswith("test")
+                            or "Test" in _node_text(member, code)[:100]
+                        )
+                        # Check Spring mapping annotations
+                        m_text = _node_text(member, code)
+                        is_api = "@GetMapping" in m_text or "@PostMapping" in m_text or "@RequestMapping" in m_text
+
                         symbols.append(
                             ExtractedSymbol(
                                 name=mname,
@@ -208,6 +394,9 @@ def _extract_java_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracted
                                 line_end=ml_end,
                                 parent_symbol=entity_name,
                                 visibility=_get_java_visibility(member),
+                                calls=calls,
+                                is_test=is_test_method,
+                                is_api_endpoint=is_api,
                             )
                         )
                     elif member.type == "constructor_declaration":
@@ -220,6 +409,9 @@ def _extract_java_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracted
                         if not cname:
                             continue
                         cl_start, cl_end = _node_lines(member, code)
+                        cbody = member.child_by_field_name("body")
+                        calls = _extract_calls_from_node(cbody, code)
+                        cbody = None
                         symbols.append(
                             ExtractedSymbol(
                                 name=cname,
@@ -228,11 +420,12 @@ def _extract_java_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracted
                                 line_end=cl_end,
                                 parent_symbol=entity_name,
                                 visibility=_get_java_visibility(member),
+                                calls=calls,
                             )
                         )
 
-                    member = None  # release node reference
-                body = None  # release node reference
+                    member = None
+                body = None
 
     try:
         del node  # noqa: F821
@@ -248,16 +441,15 @@ def _get_java_visibility(node: tree_sitter.Node) -> str:
             for mod in child.children:
                 if mod.type in ("public", "private", "protected"):
                     result = mod.type
-                    mod = None  # release node reference
-                    child = None  # release node reference
+                    mod = None
+                    child = None
                     return result
-            child = None  # release node reference
+            child = None
     try:
         del child  # noqa: F821
     except NameError:
         pass
     return "public"
-
 
 
 # ---------------------------------------------------------------------------
@@ -283,9 +475,9 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
                     "variable_declaration",
                 ):
                     target = child
-                    child = None  # release node reference
+                    child = None
                     break
-                child = None  # release node reference
+                child = None
 
         if target.type in ("class_declaration", "interface_declaration", "enum_declaration"):
             name_node = target.child_by_field_name("name")
@@ -302,6 +494,7 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
             elif target.type == "enum_declaration":
                 kind = "enum"
 
+            is_test_class = entity_name.startswith("Test") or entity_name.endswith("Test")
             tl_start, tl_end = _node_lines(target, code)
             symbols.append(
                 ExtractedSymbol(
@@ -310,6 +503,7 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
                     line_start=tl_start,
                     line_end=tl_end,
                     visibility="public",
+                    is_test=is_test_class,
                 )
             )
 
@@ -329,6 +523,12 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
                         mkind = "constructor" if mname == "constructor" else "method"
                         vis = "private" if mname.startswith("#") or mname.startswith("_") else "public"
                         ml_start, ml_end = _node_lines(member, code)
+                        mbody = member.child_by_field_name("body")
+                        calls = _extract_calls_from_node(mbody, code)
+                        mbody = None
+
+                        is_test_method = is_test_class or mname.startswith("test")
+
                         symbols.append(
                             ExtractedSymbol(
                                 name=mname,
@@ -337,10 +537,12 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
                                 line_end=ml_end,
                                 parent_symbol=entity_name,
                                 visibility=vis,
+                                calls=calls,
+                                is_test=is_test_method,
                             )
                         )
-                    member = None  # release node reference
-                body = None  # release node reference
+                    member = None
+                body = None
 
         elif target.type == "function_declaration":
             name_node = target.child_by_field_name("name")
@@ -352,6 +554,12 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
             if not fname:
                 return
             fl_start, fl_end = _node_lines(target, code)
+            fbody = target.child_by_field_name("body")
+            calls = _extract_calls_from_node(fbody, code)
+            fbody = None
+
+            is_test_func = fname.startswith("test") or fname in ("it", "describe", "test")
+
             symbols.append(
                 ExtractedSymbol(
                     name=fname,
@@ -359,6 +567,8 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
                     line_start=fl_start,
                     line_end=fl_end,
                     visibility="private" if fname.startswith("_") else "public",
+                    calls=calls,
+                    is_test=is_test_func,
                 )
             )
 
@@ -373,6 +583,12 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
                             name_node = None  # release node reference
                             if fname:
                                 vl_start, vl_end = _node_lines(target, code)
+                                vbody = val.child_by_field_name("body")
+                                calls = _extract_calls_from_node(vbody, code)
+                                vbody = None
+
+                                is_test_fn = fname.startswith("test")
+
                                 symbols.append(
                                     ExtractedSymbol(
                                         name=fname,
@@ -380,16 +596,18 @@ def _extract_js_ts_symbols(root: tree_sitter.Node, code: bytes) -> list[Extracte
                                         line_start=vl_start,
                                         line_end=vl_end,
                                         visibility="private" if fname.startswith("_") else "public",
+                                        calls=calls,
+                                        is_test=is_test_fn,
                                     )
                                 )
 
-                        name_node = None  # release node reference
-                    val = None  # release node reference
-                decl = None  # release node reference
+                        name_node = None
+                    val = None
+                decl = None
 
     for top_node in root.children:
         process_node(top_node)
-        top_node = None  # release node reference
+        top_node = None
 
     try:
         del top_node  # noqa: F821

@@ -1,0 +1,699 @@
+{
+  "nodes": [
+    {
+      "id": "file_1b2149292ab2c6a0",
+      "type": "file",
+      "label": "requirements.txt"
+    },
+    {
+      "id": "file_1db599371c4e97db",
+      "type": "file",
+      "label": "src/java/PaymentService.java"
+    },
+    {
+      "id": "file_bdf4a5d15d74cdd9",
+      "type": "file",
+      "label": "src/payment/client.py"
+    },
+    {
+      "id": "file_48bb431b4ef6256c",
+      "type": "file",
+      "label": "src/payment/controller.py"
+    },
+    {
+      "id": "file_b8cd5c00518a33e6",
+      "type": "file",
+      "label": "src/payment/repository.py"
+    },
+    {
+      "id": "file_9eaeb4b0c7a552b3",
+      "type": "file",
+      "label": "src/payment/service.py"
+    },
+    {
+      "id": "file_2950524c78914652",
+      "type": "file",
+      "label": "src/ts/client.ts"
+    },
+    {
+      "id": "file_33648cfcf24d8b79",
+      "type": "file",
+      "label": "tests/test_payment_service.py"
+    },
+    {
+      "id": "sym_445e53eb2a5a1c90",
+      "type": "symbol",
+      "label": "PaymentService",
+      "kind": "class"
+    },
+    {
+      "id": "sym_6e126f30ac4f5b9e",
+      "type": "symbol",
+      "label": "PaymentService",
+      "kind": "constructor"
+    },
+    {
+      "id": "sym_8b814392deda7975",
+      "type": "symbol",
+      "label": "process",
+      "kind": "method"
+    },
+    {
+      "id": "sym_2a53c2672c4de957",
+      "type": "symbol",
+      "label": "PaymentRequest",
+      "kind": "interface"
+    },
+    {
+      "id": "sym_09267db28990bf0e",
+      "type": "symbol",
+      "label": "PaymentApiClient",
+      "kind": "class"
+    },
+    {
+      "id": "sym_b9a14339962d7f6d",
+      "type": "symbol",
+      "label": "constructor",
+      "kind": "constructor"
+    },
+    {
+      "id": "sym_dd06e7a86f48e1ca",
+      "type": "symbol",
+      "label": "submit",
+      "kind": "method"
+    },
+    {
+      "id": "sym_874d27c39566f39d",
+      "type": "symbol",
+      "label": "PaymentServiceTest",
+      "kind": "class"
+    },
+    {
+      "id": "sym_45e8dfb1a625d951",
+      "type": "symbol",
+      "label": "test_process_payment_success",
+      "kind": "method"
+    },
+    {
+      "id": "sym_0bd3342ac3f3e76c",
+      "type": "symbol",
+      "label": "test_process_payment_negative_amount",
+      "kind": "method"
+    },
+    {
+      "id": "sym_0d001287ffb46570",
+      "type": "symbol",
+      "label": "PaymentController",
+      "kind": "class"
+    },
+    {
+      "id": "sym_c171fd1557daf1ab",
+      "type": "symbol",
+      "label": "__init__",
+      "kind": "constructor"
+    },
+    {
+      "id": "sym_04f905631086d51b",
+      "type": "symbol",
+      "label": "handle_payment",
+      "kind": "method"
+    },
+    {
+      "id": "sym_33fb826187c3176a",
+      "type": "symbol",
+      "label": "get_status",
+      "kind": "method"
+    },
+    {
+      "id": "sym_b0994ec610604e03",
+      "type": "symbol",
+      "label": "PaymentService",
+      "kind": "class"
+    },
+    {
+      "id": "sym_1fcc3e8f6a316a91",
+      "type": "symbol",
+      "label": "__init__",
+      "kind": "constructor"
+    },
+    {
+      "id": "sym_6bb93cc9b5d84f82",
+      "type": "symbol",
+      "label": "process_payment",
+      "kind": "method"
+    },
+    {
+      "id": "sym_fc5afc636d7538bf",
+      "type": "symbol",
+      "label": "validate_order",
+      "kind": "method"
+    },
+    {
+      "id": "sym_7bc426021f2eeede",
+      "type": "symbol",
+      "label": "PaymentRepository",
+      "kind": "class"
+    },
+    {
+      "id": "sym_fb0b047e961c0a83",
+      "type": "symbol",
+      "label": "__init__",
+      "kind": "constructor"
+    },
+    {
+      "id": "sym_7a1691634e6b275c",
+      "type": "symbol",
+      "label": "save_transaction",
+      "kind": "method"
+    },
+    {
+      "id": "sym_4888767c127f4fa8",
+      "type": "symbol",
+      "label": "find_by_id",
+      "kind": "method"
+    },
+    {
+      "id": "sym_fd38257b81972cc2",
+      "type": "symbol",
+      "label": "PaymentClient",
+      "kind": "class"
+    },
+    {
+      "id": "sym_71c8d0a80e9a26ae",
+      "type": "symbol",
+      "label": "__init__",
+      "kind": "constructor"
+    },
+    {
+      "id": "sym_ab3ec6e03e40fb2a",
+      "type": "symbol",
+      "label": "call_payment_api",
+      "kind": "method"
+    },
+    {
+      "id": "sym_3c3261ed35c82399",
+      "type": "symbol",
+      "label": "ping",
+      "kind": "method"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_1d7d5a3e91bc10a5",
+      "source_id": "file_1db599371c4e97db",
+      "target_id": "sym_445e53eb2a5a1c90",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_c278f530c7cd8c54",
+      "source_id": "file_1db599371c4e97db",
+      "target_id": "sym_6e126f30ac4f5b9e",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_8a0e891d955d04fb",
+      "source_id": "file_1db599371c4e97db",
+      "target_id": "sym_8b814392deda7975",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_1310106496c0da89",
+      "source_id": "file_2950524c78914652",
+      "target_id": "sym_09267db28990bf0e",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_5090a867948c882d",
+      "source_id": "file_2950524c78914652",
+      "target_id": "sym_2a53c2672c4de957",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_afe2d28b975a16ca",
+      "source_id": "file_2950524c78914652",
+      "target_id": "sym_b9a14339962d7f6d",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_105785553075879c",
+      "source_id": "file_2950524c78914652",
+      "target_id": "sym_dd06e7a86f48e1ca",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_eb3fd7b73a8b372d",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_0bd3342ac3f3e76c",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_96f7900d6732cbea",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_45e8dfb1a625d951",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_7eb514f2e0045574",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_874d27c39566f39d",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_242b08fad0ef8c38",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "sym_04f905631086d51b",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_5ab7abea04d5c04e",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "sym_0d001287ffb46570",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_9e8195f53dacaabd",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "sym_33fb826187c3176a",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_ab0778e60ee1d4ae",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "sym_c171fd1557daf1ab",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_4b95034da9ec446b",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "sym_1fcc3e8f6a316a91",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_e52b4a27b65853fc",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "sym_6bb93cc9b5d84f82",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_60fe0d4966ae3f4c",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "sym_b0994ec610604e03",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_bcf22ba6ea756742",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "sym_fc5afc636d7538bf",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_22c1a0dc9931807f",
+      "source_id": "file_b8cd5c00518a33e6",
+      "target_id": "sym_4888767c127f4fa8",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_5b83dab82c195435",
+      "source_id": "file_b8cd5c00518a33e6",
+      "target_id": "sym_7a1691634e6b275c",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_52553fa1a92ecd7a",
+      "source_id": "file_b8cd5c00518a33e6",
+      "target_id": "sym_7bc426021f2eeede",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_3eb19c3c8e56dbeb",
+      "source_id": "file_b8cd5c00518a33e6",
+      "target_id": "sym_fb0b047e961c0a83",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_aaee0e79453af0b3",
+      "source_id": "file_bdf4a5d15d74cdd9",
+      "target_id": "sym_3c3261ed35c82399",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_aec9ee390aeb79e5",
+      "source_id": "file_bdf4a5d15d74cdd9",
+      "target_id": "sym_71c8d0a80e9a26ae",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_f62e6cb53384ebb8",
+      "source_id": "file_bdf4a5d15d74cdd9",
+      "target_id": "sym_ab3ec6e03e40fb2a",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_aefd4ffb5342d4bc",
+      "source_id": "file_bdf4a5d15d74cdd9",
+      "target_id": "sym_fd38257b81972cc2",
+      "type": "FILE_CONTAINS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_7408ef6fecc11538",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "file_1db599371c4e97db",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_c1f21b05028ebbe6",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "file_9eaeb4b0c7a552b3",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_74319069b1a9e00e",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "file_b8cd5c00518a33e6",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_65380629aaee6d52",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "file_bdf4a5d15d74cdd9",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_585f7c54c0635ee7",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "file_1db599371c4e97db",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_0b587af344b50c19",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "file_9eaeb4b0c7a552b3",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_ba4e0814a0ac09c9",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "file_b8cd5c00518a33e6",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_82a7d572cd9c64a2",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "file_bdf4a5d15d74cdd9",
+      "type": "FILE_DEPENDS_ON_FILE",
+      "metadata": {}
+    },
+    {
+      "id": "rel_cf42196f2c249bf2",
+      "source_id": "sym_04f905631086d51b",
+      "target_id": "sym_6bb93cc9b5d84f82",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_99d232db5cf063a3",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_445e53eb2a5a1c90",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_944efa2885e6f0ea",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_6bb93cc9b5d84f82",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_da8162721cc43327",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_6e126f30ac4f5b9e",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_c3f5fff3ad2abaa3",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_7bc426021f2eeede",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_62285ccbab5c489e",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_b0994ec610604e03",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_176b551465d5e50f",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_fd38257b81972cc2",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_d07e5d5c582afbc8",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_445e53eb2a5a1c90",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_1eeda2b8ab84543b",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_6bb93cc9b5d84f82",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_0d13e0c3e1b98a21",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_6e126f30ac4f5b9e",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_b1d6027cf28cb5ba",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_7bc426021f2eeede",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_44728f0c065cccc9",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_b0994ec610604e03",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_3a42c8b20aff79d2",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_fd38257b81972cc2",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_8da4e7baf90543a1",
+      "source_id": "sym_6bb93cc9b5d84f82",
+      "target_id": "sym_7a1691634e6b275c",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_9c900a35ab9555cb",
+      "source_id": "sym_6bb93cc9b5d84f82",
+      "target_id": "sym_ab3ec6e03e40fb2a",
+      "type": "SYMBOL_CALLS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_0fdaf4b648a376f3",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_445e53eb2a5a1c90",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_937059259e283ce6",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_6e126f30ac4f5b9e",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_b0d79675c48d8563",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_7bc426021f2eeede",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_81c05eb40ada82e1",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_b0994ec610604e03",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_6a6b8eb7e6f9fdd1",
+      "source_id": "file_33648cfcf24d8b79",
+      "target_id": "sym_fd38257b81972cc2",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_84943133d96d0ff0",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "sym_445e53eb2a5a1c90",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_d56aa3daa5ba1bbd",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "sym_6e126f30ac4f5b9e",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_b87a49ea513f4e08",
+      "source_id": "file_48bb431b4ef6256c",
+      "target_id": "sym_b0994ec610604e03",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_1dd04c352b7b3264",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "sym_7bc426021f2eeede",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_2cf2d3d5808866e9",
+      "source_id": "file_9eaeb4b0c7a552b3",
+      "target_id": "sym_fd38257b81972cc2",
+      "type": "SYMBOL_IMPORTS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_a84d9024051868a4",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_445e53eb2a5a1c90",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_667bf80886995210",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_6bb93cc9b5d84f82",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_c6012d40f4e1e1e6",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_6e126f30ac4f5b9e",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_ca53db463a57b5d2",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_7bc426021f2eeede",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_a1180f324dcb13f0",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_b0994ec610604e03",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_1ece9a1c76e74147",
+      "source_id": "sym_0bd3342ac3f3e76c",
+      "target_id": "sym_fd38257b81972cc2",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_087b6ba6ddf652f2",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_445e53eb2a5a1c90",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_ecd86f8e55769dde",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_6bb93cc9b5d84f82",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_92d4d9a99acfc3d0",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_6e126f30ac4f5b9e",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_60026c736a43c219",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_7bc426021f2eeede",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_4e4267c863b8175f",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_b0994ec610604e03",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    },
+    {
+      "id": "rel_190f2c1c2b508cc4",
+      "source_id": "sym_45e8dfb1a625d951",
+      "target_id": "sym_fd38257b81972cc2",
+      "type": "TEST_TARGETS_SYMBOL",
+      "metadata": {}
+    }
+  ]
+}

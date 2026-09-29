@@ -1,0 +1,218 @@
+[
+  {
+    "id": "test_1e6b82dc4a781b17",
+    "file_id": "file_1e74f69bc8d831a5",
+    "name": "test_java_symbol_extraction",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "extract_symbols"
+  },
+  {
+    "id": "test_aee00cdfe4415b4e",
+    "file_id": "file_1e74f69bc8d831a5",
+    "name": "test_python_symbol_extraction",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "extract_symbols"
+  },
+  {
+    "id": "test_6c61850232a66de8",
+    "file_id": "file_1e74f69bc8d831a5",
+    "name": "test_typescript_symbol_extraction",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "extract_symbols"
+  },
+  {
+    "id": "test_8b895163562e1cca",
+    "file_id": "file_2195311b01a6480d",
+    "name": "TestEntity",
+    "test_type": "suite",
+    "framework": "pytest",
+    "target_symbol": null
+  },
+  {
+    "id": "test_4eef639808e8e02d",
+    "file_id": "file_3d6ab178fd8e8ee9",
+    "name": "test_sqlite_repository_roundtrip",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "get_summary"
+  },
+  {
+    "id": "test_47698b601d6bd456",
+    "file_id": "file_6399393c19c5cf16",
+    "name": "test_custom_gitignore",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "is_ignored"
+  },
+  {
+    "id": "test_265c2ac06beaa100",
+    "file_id": "file_6399393c19c5cf16",
+    "name": "test_default_ignores",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "is_ignored"
+  },
+  {
+    "id": "test_d862244e462f35b6",
+    "file_id": "file_6399393c19c5cf16",
+    "name": "test_mskignore",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "is_ignored"
+  },
+  {
+    "id": "test_b2c2e8e291817906",
+    "file_id": "file_778d70997b0c4075",
+    "name": "test_detect_ecosystems",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "detect_ecosystems"
+  },
+  {
+    "id": "test_64106dbf44f34192",
+    "file_id": "file_778d70997b0c4075",
+    "name": "test_determine_project_name",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "determine_project_name"
+  },
+  {
+    "id": "test_8efcfd456eeefd45",
+    "file_id": "file_778d70997b0c4075",
+    "name": "test_find_project_root_from_cwd",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "find_project_root"
+  },
+  {
+    "id": "test_cce7a5a161d79002",
+    "file_id": "file_778d70997b0c4075",
+    "name": "test_find_project_root_from_subdir",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "find_project_root"
+  },
+  {
+    "id": "test_7cf40ef28014ef58",
+    "file_id": "file_8e8c31b265dd8d48",
+    "name": "test_cli_doctor",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": null
+  },
+  {
+    "id": "test_b7065d98e785e8ab",
+    "file_id": "file_8e8c31b265dd8d48",
+    "name": "test_cli_help",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": null
+  },
+  {
+    "id": "test_7dc6550800e08813",
+    "file_id": "file_8e8c31b265dd8d48",
+    "name": "test_cli_init_status_update_cycle",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": null
+  },
+  {
+    "id": "test_4c0d05af978bc816",
+    "file_id": "file_90481873a239ead4",
+    "name": "test_dot_git_and_dot_msk_never_scanned",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "scan"
+  },
+  {
+    "id": "test_8b4dd55802f142c5",
+    "file_id": "file_90481873a239ead4",
+    "name": "test_log_secret_scrubbing",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "filter"
+  },
+  {
+    "id": "test_5602818b173e9537",
+    "file_id": "file_90481873a239ead4",
+    "name": "test_no_source_code_copies_in_msk",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "run_init"
+  },
+  {
+    "id": "test_6b7c7b069504f52a",
+    "file_id": "file_bd7c1c8b7c0a4d7d",
+    "name": "PaymentServiceTest",
+    "test_type": "suite",
+    "framework": "pytest",
+    "target_symbol": null
+  },
+  {
+    "id": "test_b2f345806b535390",
+    "file_id": "file_bd7c1c8b7c0a4d7d",
+    "name": "test_process_payment_negative_amount",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "process_payment"
+  },
+  {
+    "id": "test_9bab7662e5ec24ff",
+    "file_id": "file_bd7c1c8b7c0a4d7d",
+    "name": "test_process_payment_success",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "process_payment"
+  },
+  {
+    "id": "test_a29d844f1b854450",
+    "file_id": "file_ea9f132bdf9cd6df",
+    "name": "test_package_json_parsing",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "parse_manifest_dependencies"
+  },
+  {
+    "id": "test_846fa5aa45905b9f",
+    "file_id": "file_ea9f132bdf9cd6df",
+    "name": "test_python_import_extraction",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "extract_imports"
+  },
+  {
+    "id": "test_062f7320e5a5e8ee",
+    "file_id": "file_ea9f132bdf9cd6df",
+    "name": "test_requirements_txt_parsing",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "parse_manifest_dependencies"
+  },
+  {
+    "id": "test_403e4b49ac27ec0f",
+    "file_id": "file_fa6266d740bc34b5",
+    "name": "test_scanner_discovers_source_files",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "scan"
+  },
+  {
+    "id": "test_12ec9478c31a6db9",
+    "file_id": "file_fa6266d740bc34b5",
+    "name": "test_scanner_prevents_escaping_project_root",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "scan"
+  },
+  {
+    "id": "test_254b52a7559c7d0f",
+    "file_id": "file_fa6266d740bc34b5",
+    "name": "test_scanner_skips_binary_files",
+    "test_type": "case",
+    "framework": "pytest",
+    "target_symbol": "scan"
+  }
+]

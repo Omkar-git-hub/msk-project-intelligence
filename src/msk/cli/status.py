@@ -71,7 +71,14 @@ def run_status(root: Path | None = None) -> None:
     console.print(f"Symbols:        [bold green]{summary.total_symbols:,}[/bold green]")
     console.print(f"Dependencies:   [bold green]{summary.total_dependencies:,}[/bold green]")
     console.print(f"Relationships:  [bold green]{summary.total_relationships:,}[/bold green]")
+    if summary.total_tests:
+        console.print(f"Tests:          [bold green]{summary.total_tests:,}[/bold green]")
+    if summary.total_api_endpoints:
+        console.print(f"API Endpoints:  [bold green]{summary.total_api_endpoints:,}[/bold green]")
+    if summary.total_infrastructure:
+        console.print(f"Infrastructure: [bold green]{summary.total_infrastructure:,}[/bold green]")
     console.print()
+
 
     console.print("Git:")
     if git_state.is_repo:

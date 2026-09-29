@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "external_llm": {
+    "enabled": false,
+    "allowed_providers": [
+      "local"
+    ],
+    "enforce_strict_redaction": true
+  },
+  "security": {
+    "secrets": "block",
+    "pii": "sanitize",
+    "sensitive_files": "block",
+    "custom_sensitive_patterns": []
+  }
+}

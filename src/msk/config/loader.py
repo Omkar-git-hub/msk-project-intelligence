@@ -37,7 +37,7 @@ def save_project_config(project_root: str | Path, config: ProjectConfig) -> None
     msk_dir.mkdir(parents=True, exist_ok=True)
     path = get_project_config_path(project_root)
     with path.open("w", encoding="utf-8") as f:
-        json.dump(config.model_dump(), f, indent=2)
+        f.write(json.dumps(config.model_dump(), indent=2))
 
 
 def load_policy_config(project_root: str | Path) -> PolicyConfig:
@@ -56,4 +56,5 @@ def save_policy_config(project_root: str | Path, policy: PolicyConfig) -> None:
     msk_dir.mkdir(parents=True, exist_ok=True)
     path = get_policy_config_path(project_root)
     with path.open("w", encoding="utf-8") as f:
-        json.dump(policy.model_dump(), f, indent=2)
+        f.write(json.dumps(policy.model_dump(), indent=2))
+

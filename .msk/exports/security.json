@@ -1,0 +1,10 @@
+[
+  {
+    "id": "sec_2841160490f1f908",
+    "file_id": "file_90481873a239ead4",
+    "rule_id": "HARDCODED_CREDENTIAL_ASSIGNMENT",
+    "severity": "MEDIUM",
+    "line_number": 17,
+    "description": "Potential hardcoded credential assignment detected on line 17"
+  }
+]
