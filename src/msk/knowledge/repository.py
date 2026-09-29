@@ -1,6 +1,7 @@
 """Repository for persisting and querying the Project Knowledge Model."""
 
 import json
+
 from msk.knowledge.models import (
     ApiEndpointEntity,
     DependencyEntity,

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "msk"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "Local-first Project Intelligence, Privacy, and Security layer for software engineering"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ authors = [
     { name = "MSK Engineering Team" }
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Security",
@@ -36,7 +36,16 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
+    "ruff>=0.4.0",
+    "bandit[toml]>=1.7.0",
+    "pip-audit>=2.7.0",
+    "build>=1.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Omkar-git-hub/msk-project-intelligence"
+Repository = "https://github.com/Omkar-git-hub/msk-project-intelligence"
+Issues = "https://github.com/Omkar-git-hub/msk-project-intelligence/issues"
 
 [project.scripts]
 msk = "msk.cli.main:app"
@@ -49,3 +58,34 @@ testpaths = ["tests"]
 norecursedirs = ["fixtures", "tests/fixtures", ".venv", ".git", ".msk"]
 pythonpath = ["src"]
 addopts = "-v --strict-markers"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/msk/cli/*.py" = ["B008"]  # typer.Option() in defaults is the standard Typer pattern
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = [
+    "B101",  # assert is fine in non-production code
+    "B110",  # try/except/pass used for graceful degradation (git, metadata)
+    "B404",  # subprocess import is required for git integration
+    "B603",  # subprocess calls use hardcoded commands only (git)
+    "B607",  # partial paths are hardcoded ("git"), not user input
+]

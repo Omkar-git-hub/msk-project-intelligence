@@ -1,6 +1,7 @@
 """Knowledge graph traversal and query engine."""
 
 from collections import defaultdict
+
 from msk.graph.nodes import GraphEdge, GraphNode
 from msk.graph.relationships import RelationshipType
 

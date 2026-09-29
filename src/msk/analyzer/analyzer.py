@@ -1,6 +1,7 @@
 """File and source code analyzer orchestrator."""
 
 from pathlib import Path
+
 from pydantic import BaseModel, Field
 
 from msk.analyzer.dependencies import ProjectDependency, parse_manifest_dependencies

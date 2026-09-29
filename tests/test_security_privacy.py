@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+
 from msk.cli.init import run_init
 from msk.common.logging import SecretScrubbingFilter
 from msk.project.scanner import ProjectScanner

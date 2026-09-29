@@ -1,15 +1,16 @@
 """Implementation of 'msk init' command."""
 
-from datetime import datetime, timezone
-from pathlib import Path
 import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
 from msk.analyzer.analyzer import analyze_file
 from msk.changes.git import get_git_state
-from msk.common.errors import MSKError, ProjectAlreadyInitializedError
+from msk.common.errors import ProjectAlreadyInitializedError
 from msk.config.loader import (
     get_msk_dir,
     get_project_config_path,
@@ -65,7 +66,7 @@ def run_init(
     existing_cfg = load_project_config(project_root)
     proj_id = existing_cfg.id if (existing_cfg and not force) else str(uuid.uuid4())
     proj_name = determine_project_name(project_root)
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
 
     project_config = ProjectConfig(
         id=proj_id,

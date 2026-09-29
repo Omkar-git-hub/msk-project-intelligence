@@ -1,6 +1,7 @@
 """Tests for ignore engine."""
 
 from pathlib import Path
+
 from msk.project.ignore import IgnoreEngine
 
 

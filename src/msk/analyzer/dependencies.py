@@ -1,9 +1,10 @@
 """Manifest and dependency parser for Python, Node, and Java."""
 
 import json
-from pathlib import Path
 import re
 import tomllib
+from pathlib import Path
+
 from pydantic import BaseModel
 
 

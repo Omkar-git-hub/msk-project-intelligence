@@ -1,9 +1,9 @@
 """SQLite database connection and schema management for MSK."""
 
+import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-import sqlite3
 
 SCHEMA_V2 = """
 PRAGMA foreign_keys = ON;

@@ -1,9 +1,10 @@
 """Main entry point for MSK CLI."""
 
-from pathlib import Path
 import sys
-from rich.console import Console
+from pathlib import Path
+
 import typer
+from rich.console import Console
 
 from msk.cli.doctor import run_doctor
 from msk.cli.init import run_init

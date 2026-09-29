@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+
 from msk.project.scanner import ProjectScanner, is_binary_file
 
 

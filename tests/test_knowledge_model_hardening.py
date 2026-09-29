@@ -1,9 +1,8 @@
 """Comprehensive tests for Phase 2: Project Knowledge Model Hardening."""
 
 import json
-from pathlib import Path
 import tempfile
-import pytest
+from pathlib import Path
 
 from msk.analyzer.analyzer import analyze_file
 from msk.analyzer.infrastructure import detect_infrastructure_file
@@ -135,7 +134,7 @@ def test_repeated_initialization_idempotence():
 def test_sensitive_values_never_stored():
     """Verify that secrets are never stored in the database or JSON exports."""
     secret_key = "AKIAIOSFODNN7EXAMPLE"
-    code = f'AWS_KEY = "{secret_key}"\npassword = "super_secret_password_123"\n'.encode("utf-8")
+    code = f'AWS_KEY = "{secret_key}"\npassword = "super_secret_password_123"\n'.encode()
 
     findings = scan_content_for_secrets("config/settings.py", code)
     assert len(findings) > 0

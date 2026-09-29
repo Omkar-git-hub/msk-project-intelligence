@@ -3,8 +3,6 @@
 from pathlib import Path
 
 
-
-
 def normalize_path(path: str | Path) -> Path:
     """Normalize path to a resolved Path object."""
     return Path(path).resolve()

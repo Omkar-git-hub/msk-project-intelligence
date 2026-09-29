@@ -1,6 +1,5 @@
 """Domain models for the Project Knowledge Model."""
 
-from typing import Any
 from pydantic import BaseModel, Field
 
 

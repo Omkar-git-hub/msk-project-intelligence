@@ -1,7 +1,7 @@
 """Streaming project filesystem scanner with boundary safety."""
 
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
 
@@ -112,7 +112,7 @@ class ProjectScanner:
                     continue
 
                 rel_posix = to_relative_posix(file_path, self.root)
-                mtime_iso = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+                mtime_iso = datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat()
 
                 yield ScannedFile(
                     relative_path=rel_posix,

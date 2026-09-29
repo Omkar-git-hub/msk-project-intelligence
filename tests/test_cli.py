@@ -1,8 +1,10 @@
 """CLI end-to-end integration tests."""
 
-from pathlib import Path
 import shutil
+from pathlib import Path
+
 from typer.testing import CliRunner
+
 from msk.cli.main import app
 
 runner = CliRunner()

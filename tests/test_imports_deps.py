@@ -1,6 +1,7 @@
 """Tests for imports and manifest dependency extraction."""
 
 from pathlib import Path
+
 from msk.analyzer.dependencies import parse_manifest_dependencies
 from msk.analyzer.imports import extract_imports
 from msk.analyzer.parser import parse_bytes

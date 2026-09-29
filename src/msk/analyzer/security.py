@@ -6,8 +6,9 @@ or private keys. It only flags file sensitivity and emits sanitized findings
 (rule ID, severity, line number, sanitized description).
 """
 
-from pathlib import Path
 import re
+from pathlib import Path
+
 from pydantic import BaseModel
 
 SENSITIVE_FILE_PATTERNS = [

@@ -1,8 +1,9 @@
 """AST symbol extraction for Python, Java, JavaScript, and TypeScript."""
 
 import re
-from pydantic import BaseModel, Field
+
 import tree_sitter
+from pydantic import BaseModel, Field
 
 
 class ExtractedSymbol(BaseModel):

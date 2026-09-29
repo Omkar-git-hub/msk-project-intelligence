@@ -1,6 +1,7 @@
 """Tests for SQLite database and KnowledgeRepository."""
 
 from pathlib import Path
+
 from msk.knowledge.models import (
     DependencyEntity,
     FileEntity,

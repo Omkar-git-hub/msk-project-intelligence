@@ -1,7 +1,8 @@
 """Configuration models for MSK projects and privacy policies."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 
@@ -45,6 +46,6 @@ class ProjectConfig(BaseModel):
     id: str
     name: str
     root: str
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     version: str = "0.1.0"

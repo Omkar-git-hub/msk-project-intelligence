@@ -1,7 +1,8 @@
 """Implementation of 'msk status' command."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+
 from rich.console import Console
 
 from msk.changes.git import get_git_state
@@ -18,7 +19,7 @@ def _format_time_ago(iso_timestamp: str) -> str:
     """Format an ISO timestamp into a human-friendly relative string."""
     try:
         dt = datetime.fromisoformat(iso_timestamp)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         diff_secs = int((now - dt).total_seconds())
 
         if diff_secs < 60:

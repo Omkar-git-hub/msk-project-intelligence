@@ -1,6 +1,7 @@
 """File and structural fingerprinting for change detection."""
 
 from pathlib import Path
+
 from pydantic import BaseModel
 
 from msk.common.hashing import sha256_file

@@ -1,11 +1,12 @@
 """Implementation of 'msk doctor' diagnostic command."""
 
-from pathlib import Path
 import platform
 import shutil
 import sqlite3
 import subprocess
 import sys
+from pathlib import Path
+
 from rich.console import Console
 from rich.table import Table
 

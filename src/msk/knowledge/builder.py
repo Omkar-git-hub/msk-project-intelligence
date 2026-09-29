@@ -2,7 +2,6 @@
 
 import hashlib
 from pathlib import Path
-from typing import Any
 
 from msk.analyzer.analyzer import FileAnalysisResult
 from msk.graph.relationships import RelationshipType

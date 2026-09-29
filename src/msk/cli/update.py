@@ -1,16 +1,15 @@
 """Implementation of incremental 'msk update' command."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+
 from rich.console import Console
-from rich.table import Table
 
 from msk.analyzer.analyzer import analyze_file
 from msk.common.errors import NotAProjectError
 from msk.common.hashing import sha256_bytes
 from msk.config.loader import get_msk_dir, load_project_config, save_project_config
 from msk.knowledge.builder import KnowledgeBuilder
-from msk.knowledge.models import ProjectEntity
 from msk.knowledge.repository import KnowledgeRepository
 from msk.project.detector import find_project_root
 from msk.project.scanner import ProjectScanner
@@ -100,7 +99,7 @@ def run_update(root: Path | None = None, verbose: bool = False) -> None:
     builder.build_and_save(analyzed_results, export_exports=True)
 
     # 6. Update timestamp
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     config.updated_at = now_iso
     save_project_config(project_root, config)
 

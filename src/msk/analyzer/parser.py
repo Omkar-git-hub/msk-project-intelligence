@@ -2,6 +2,7 @@
 
 import logging
 from typing import Any
+
 import tree_sitter
 import tree_sitter_language_pack as tslp
 

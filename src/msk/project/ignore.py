@@ -1,6 +1,7 @@
 """Ignore rule engine supporting .gitignore, .mskignore, and built-in rules."""
 
 from pathlib import Path
+
 import pathspec
 
 DEFAULT_IGNORE_PATTERNS = [

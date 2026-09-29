@@ -1,9 +1,9 @@
 """Project metadata extraction."""
 
 import json
-from pathlib import Path
 import re
 import tomllib
+from pathlib import Path
 from typing import Any
 
 from msk.project.detector import detect_ecosystems

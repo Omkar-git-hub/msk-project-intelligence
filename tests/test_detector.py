@@ -1,6 +1,7 @@
 """Tests for project detector and root discovery."""
 
 from pathlib import Path
+
 from msk.project.detector import detect_ecosystems, find_project_root
 from msk.project.metadata import determine_project_name
 
