@@ -39,7 +39,7 @@ jobs:
 
       - name: Security scan with Bandit
         run: |
-          bandit -r src
+          bandit -c pyproject.toml -r src
 
       - name: Dependency audit with pip-audit
         run: |
