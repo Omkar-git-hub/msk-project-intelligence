@@ -5,4 +5,5 @@ python -m nuitka `
     --onefile `
     --output-filename=msk.exe `
     --include-package=msk `
+    --assume-yes-for-downloads `
     src\msk\cli\main.py
