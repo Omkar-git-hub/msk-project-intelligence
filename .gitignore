@@ -48,3 +48,10 @@ htmlcov/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+
+# Nuitka build artifacts
+msk.exe
+*.build/
+*.dist/
+*.onefile-build/
