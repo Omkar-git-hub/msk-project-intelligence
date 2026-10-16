@@ -1,6 +1,13 @@
-"""Domain models for the Project Knowledge Model."""
+import hashlib
 
 from pydantic import BaseModel, Field
+
+
+def make_entity_id(prefix: str, *parts: str) -> str:
+    """Create a deterministic identifier from composite strings."""
+    key = ":".join(parts)
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+    return f"{prefix}_{digest}"
 
 
 class ProjectEntity(BaseModel):
@@ -28,6 +35,7 @@ class FileEntity(BaseModel):
     is_test: bool = False
     is_sensitive: bool = False
     security_flags: list[str] = Field(default_factory=list)
+    imports: list[str] = Field(default_factory=list)
 
 
 class SymbolEntity(BaseModel):

@@ -171,6 +171,17 @@ MSK builds a structured model of your project stored in SQLite (`.msk/msk.db`), 
 
 The `.msk/` directory is **fully regeneratable** from source. You can delete it and run `msk init` to rebuild everything.
 
+### Incremental Change Engine
+
+When your codebase evolves, `msk update` incrementally updates the knowledge model:
+
+1. **Cryptographic Change Detection**: Compares current files against SQLite records using streaming SHA-256 content hashes (not relying on volatile modification timestamps alone).
+2. **Selective AST Analysis**: Analyzes **only** newly added, modified, or renamed files. Unchanged files are skipped, preserving existing knowledge records without re-parsing.
+3. **Rename Detection**: Unambiguous file moves/renames are detected by matching content hashes across deleted and added paths.
+4. **Stale Record Cleanup & Cascades**: Deleted or modified files cascade-delete old symbols, tests, APIs, and clean up orphaned relationship edges.
+5. **Knowledge Graph Reconciliation**: Synchronizes `FILE_CONTAINS_SYMBOL`, `SYMBOL_IMPORTS_SYMBOL`, `SYMBOL_CALLS_SYMBOL`, `FILE_DEPENDS_ON_FILE`, and `TEST_TARGETS_SYMBOL` across all entities.
+6. **Interruption-Safe Atomic Writes**: Database updates execute within a single atomic SQLite transaction with WAL mode. JSON exports are written via temporary `.tmp` files and swapped atomically using `os.replace`.
+
 ---
 
 ## Privacy & Security
@@ -266,12 +277,11 @@ pip-audit
 
 This is `v0.1.0-alpha.1`. The following limitations apply:
 
-- **No AI/LLM integration yet**: MSK currently builds the knowledge model only. AI query commands (`msk ask`, `msk explain`) are planned for future phases.
-- **No incremental change tracking**: `msk update` performs a full re-scan. True incremental diffing is planned.
-- **Limited language support**: Python, Java, TypeScript, and JavaScript only.
-- **No remote/cloud features**: Everything runs locally.
-- **Schema may change**: The SQLite schema (V2) and JSON export formats may change in future versions.
-- **Windows note**: Tested on Windows 11 with Python 3.14. The tree-sitter integration uses a safe byte-offset approach to avoid known GC issues on Windows.
+- **No AI/LLM integration yet**: MSK currently builds and maintains the knowledge model locally. AI query commands (`msk ask`, `msk explain`) are planned for future phases.
+- **Limited language support**: Python, Java, TypeScript, and JavaScript parsers currently enabled.
+- **No remote/cloud features**: Everything runs 100% locally on your machine.
+- **Schema evolution**: Non-destructive migrations keep SQLite schema backwards compatible across updates.
+- **Windows note**: Tested on Windows 11 with Python 3.14. Tree-sitter AST nodes use safe byte-offset extraction.
 
 ---
 
@@ -279,7 +289,7 @@ This is `v0.1.0-alpha.1`. The following limitations apply:
 
 - [x] **Phase 1**: Local Project Intelligence & CLI
 - [x] **Phase 2**: Hardened Knowledge Model (tests, APIs, infrastructure, security)
-- [ ] **Phase 3**: Incremental Change Tracking & Diffing
+- [x] **Phase 3**: Incremental Change Engine & Knowledge Model Consistency
 - [ ] **Phase 4**: Explainable Minimum-Context Engine
 - [ ] **Phase 5**: Privacy, Secret & PII Scanning Engine
 - [ ] **Phase 6**: Pluggable AI / LLM Gateway (Local & Cloud)
