@@ -1,21 +1,24 @@
 """Implementation of incremental 'msk update' command."""
 
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
 from rich.console import Console
+from rich.table import Table
 
 from msk.analyzer.analyzer import analyze_file
+from msk.changes.engine import detect_changes
 from msk.common.errors import NotAProjectError
-from msk.common.hashing import sha256_bytes
 from msk.config.loader import get_msk_dir, load_project_config, save_project_config
-from msk.knowledge.builder import KnowledgeBuilder
 from msk.knowledge.repository import KnowledgeRepository
+from msk.knowledge.serializer import export_from_repository
 from msk.project.detector import find_project_root
 from msk.project.scanner import ProjectScanner
 from msk.storage.database import DatabaseManager
 
 console = Console()
+logger = logging.getLogger("msk.cli.update")
 
 
 def run_update(root: Path | None = None, verbose: bool = False) -> None:
@@ -41,64 +44,63 @@ def run_update(root: Path | None = None, verbose: bool = False) -> None:
     repo = KnowledgeRepository(db_manager)
 
     # 1. Fetch currently recorded files
-    recorded_files = {f.path: f for f in repo.get_all_files(config.id)}
+    recorded_files = repo.get_all_files(config.id)
 
-    # 2. Scan current workspace
+    # 2. Scan current workspace applying all ignore rules and safety constraints
     scanner = ProjectScanner(project_root)
-    scanned = {sf.relative_path: sf for sf in scanner.scan()}
+    scanned_files = list(scanner.scan())
 
-    added_paths = set(scanned.keys()) - set(recorded_files.keys())
-    deleted_paths = set(recorded_files.keys()) - set(scanned.keys())
-    common_paths = set(scanned.keys()) & set(recorded_files.keys())
+    # 3. Detect changes using SHA-256 content hashes (not modification times alone)
+    change_set = detect_changes(scanned_files, recorded_files)
 
-    modified_paths: set[str] = set()
-    for path in common_paths:
-        sf = scanned[path]
-        rec = recorded_files[path]
-        try:
-            current_hash = sha256_bytes(sf.absolute_path.read_bytes())
-            if current_hash != rec.content_hash:
-                modified_paths.add(path)
-        except OSError:
-            modified_paths.add(path)
-
-    total_changes = len(added_paths) + len(modified_paths) + len(deleted_paths)
-
-    if total_changes == 0:
+    if change_set.total_changes == 0:
         console.print("[bold green][OK] Everything up to date.[/bold green] No changes detected.")
+        if verbose:
+            _print_summary_table(
+                added=0,
+                modified=0,
+                deleted=0,
+                renamed=0,
+                unchanged=len(change_set.unchanged),
+                analyzed=0,
+                errors=0,
+            )
         return
 
-    console.print(f"[bold cyan]Detected {total_changes} change(s):[/bold cyan] "
-                  f"[green]{len(added_paths)} added[/green], "
-                  f"[yellow]{len(modified_paths)} modified[/yellow], "
-                  f"[red]{len(deleted_paths)} deleted[/red]")
+    console.print(
+        f"[bold cyan]Detected {change_set.total_changes} change(s):[/bold cyan] "
+        f"[green]{len(change_set.added)} added[/green], "
+        f"[yellow]{len(change_set.modified)} modified[/yellow], "
+        f"[red]{len(change_set.deleted)} deleted[/red]"
+        + (f", [blue]{len(change_set.renamed)} renamed[/blue]" if change_set.renamed else "")
+    )
 
-    # 3. Process deleted files
-    if deleted_paths:
-        with db_manager.transaction() as conn:
-            for d_path in deleted_paths:
-                file_row = conn.execute("SELECT id FROM files WHERE path = ?", (d_path,)).fetchone()
-                if file_row:
-                    f_id = file_row["id"]
-                    conn.execute("DELETE FROM relationships WHERE source_id = ? OR target_id = ?", (f_id, f_id))
-                    conn.execute("DELETE FROM files WHERE id = ?", (f_id,))
+    # 4. Analyze ONLY added, modified, and renamed files
+    files_to_analyze = change_set.added + change_set.modified + [new_sf for (_, new_sf) in change_set.renamed]
+    deleted_paths = [rf.path for rf in change_set.deleted] + [old_rf.path for (old_rf, _) in change_set.renamed]
 
-    # 4. Analyze added and modified files
-    paths_to_analyze = added_paths | modified_paths
     analyzed_results = []
-    for path in sorted(scanned.keys()):
-        sf = scanned[path]
-        if path in paths_to_analyze:
-            analyzed_results.append(analyze_file(sf, project_root))
-        else:
-            analyzed_results.append(analyze_file(sf, project_root))
+    errors_encountered = 0
 
-    # 5. Rebuild and refresh knowledge model
-    repo.clear_project_data(config.id)
-    builder = KnowledgeBuilder(config.id, project_root, repo)
-    builder.build_and_save(analyzed_results, export_exports=True)
+    for sf in files_to_analyze:
+        try:
+            res = analyze_file(sf, project_root)
+            analyzed_results.append(res)
+        except Exception as exc:
+            errors_encountered += 1
+            logger.warning(f"Failed to analyze {sf.relative_path}: {exc}")
 
-    # 6. Update timestamp
+    # 5. Atomically update SQLite database and reconcile knowledge graph
+    repo.apply_incremental_update(
+        project_id=config.id,
+        deleted_paths=deleted_paths,
+        new_or_modified_results=analyzed_results,
+    )
+
+    # 6. Generate safe atomic JSON exports consistent with SQLite state
+    export_from_repository(repo, config.id, msk_dir / "exports")
+
+    # 7. Update timestamps
     now_iso = datetime.now(UTC).isoformat()
     config.updated_at = now_iso
     save_project_config(project_root, config)
@@ -108,4 +110,44 @@ def run_update(root: Path | None = None, verbose: bool = False) -> None:
         proj_entity.updated_at = now_iso
         repo.save_project(proj_entity)
 
+    # 8. Report concise metrics summary
+    _print_summary_table(
+        added=len(change_set.added),
+        modified=len(change_set.modified),
+        deleted=len(change_set.deleted),
+        renamed=len(change_set.renamed),
+        unchanged=len(change_set.unchanged),
+        analyzed=len(analyzed_results),
+        errors=errors_encountered,
+    )
+
     console.print("[bold green][OK] Knowledge model successfully updated.[/bold green]")
+
+
+def _print_summary_table(
+    added: int,
+    modified: int,
+    deleted: int,
+    renamed: int,
+    unchanged: int,
+    analyzed: int,
+    errors: int,
+) -> None:
+    """Print structured summary metrics table for msk update."""
+    table = Table(title="MSK Update Summary", title_style="bold magenta", border_style="dim")
+    table.add_column("Metric", style="cyan", no_wrap=True)
+    table.add_column("Count", style="green")
+
+    table.add_row("Files Added", str(added))
+    table.add_row("Files Modified", str(modified))
+    table.add_row("Files Deleted", str(deleted))
+    if renamed > 0:
+        table.add_row("Files Renamed", str(renamed))
+    table.add_row("Files Unchanged", str(unchanged))
+    table.add_row("Files Analyzed", str(analyzed))
+    if errors > 0:
+        table.add_row("Errors Encountered", f"[bold red]{errors}[/bold red]")
+    else:
+        table.add_row("Errors Encountered", str(errors))
+
+    console.print(table)

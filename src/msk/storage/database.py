@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS files (
     modified_at TEXT NOT NULL,
     is_test INTEGER NOT NULL DEFAULT 0,
     is_sensitive INTEGER NOT NULL DEFAULT 0,
-    security_flags TEXT
+    security_flags TEXT,
+    imports_json TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);
 CREATE INDEX IF NOT EXISTS idx_files_project_id ON files(project_id);
@@ -190,6 +191,8 @@ class DatabaseManager:
             conn.execute("ALTER TABLE files ADD COLUMN is_sensitive INTEGER NOT NULL DEFAULT 0;")
         if "security_flags" not in file_cols:
             conn.execute("ALTER TABLE files ADD COLUMN security_flags TEXT;")
+        if "imports_json" not in file_cols:
+            conn.execute("ALTER TABLE files ADD COLUMN imports_json TEXT;")
 
         # Check symbols table columns
         cur.execute("PRAGMA table_info(symbols);")
