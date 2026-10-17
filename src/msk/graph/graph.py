@@ -43,6 +43,14 @@ class KnowledgeGraph:
             result = [e for e in result if e.relationship_type == target_type]
         return result
 
+    def has_node(self, node_id: str) -> bool:
+        """Check if a node ID exists in the graph."""
+        return node_id in self.nodes
+
+    def get_node(self, node_id: str) -> GraphNode | None:
+        """Retrieve a node by its ID."""
+        return self.nodes.get(node_id)
+
     def to_dict(self) -> dict[str, list[dict]]:
         """Export serialized representation for JSON inspection."""
         return {
