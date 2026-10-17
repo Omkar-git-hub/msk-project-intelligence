@@ -1,6 +1,7 @@
 """CLI end-to-end integration tests for 'msk impact' command."""
 
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -11,18 +12,26 @@ from msk.cli.main import app
 
 runner = CliRunner()
 
+ANSI_REGEX = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from text for reliable assertions."""
+    return ANSI_REGEX.sub("", text)
+
 
 def test_cli_impact_help() -> None:
     """Test msk impact --help displays all arguments and description."""
-    result = runner.invoke(app, ["impact", "--help"])
+    result = runner.invoke(app, ["impact", "--help"], color=False, env={"NO_COLOR": "1", "TERM": "dumb"})
     assert result.exit_code == 0
-    assert "Analyze downstream impact" in result.stdout
-    assert "--file" in result.stdout
-    assert "--symbol" in result.stdout
-    assert "--dependency" in result.stdout
-    assert "--depth" in result.stdout
-    assert "--direct" in result.stdout
-    assert "--json" in result.stdout
+    clean_stdout = strip_ansi(result.stdout)
+    assert "Analyze downstream impact" in clean_stdout
+    assert "--file" in clean_stdout
+    assert "--symbol" in clean_stdout
+    assert "--dependency" in clean_stdout
+    assert "--depth" in clean_stdout
+    assert "--direct" in clean_stdout
+    assert "--json" in clean_stdout
 
 
 def test_cli_impact_file_human_output(tmp_path: Path) -> None:
@@ -143,5 +152,6 @@ def test_cli_impact_ambiguous_symbol_error(tmp_path: Path) -> None:
 
     result = runner.invoke(app, ["impact", "--symbol", "PaymentService", "--root", str(target)])
     assert result.exit_code == 1
-    assert "Ambiguous symbol 'PaymentService'" in result.stdout
-    assert "--file" in result.stdout
+    clean_stdout = strip_ansi(result.stdout)
+    assert "Ambiguous symbol 'PaymentService'" in clean_stdout
+    assert "--file" in clean_stdout
