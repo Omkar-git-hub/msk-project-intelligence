@@ -18,6 +18,7 @@ def test_cli_help() -> None:
     assert "status" in result.stdout
     assert "doctor" in result.stdout
     assert "update" in result.stdout
+    assert "impact" in result.stdout
 
 
 def test_cli_doctor(tmp_path: Path) -> None:

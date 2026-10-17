@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 
 from msk.cli.doctor import run_doctor
+from msk.cli.impact import run_impact
 from msk.cli.init import run_init
 from msk.cli.status import run_status
 from msk.cli.update import run_update
@@ -114,6 +115,44 @@ def update_command(
     verbose = ctx.obj.get("verbose", False)
     try:
         run_update(root=root, verbose=verbose)
+    except MSKError as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]MSK Error:[/bold red] {exc.message}")
+        if exc.hint:
+            console.print(f"[yellow]Run:[/yellow] {exc.hint}")
+        sys.exit(1)
+    except Exception as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]Unexpected Error:[/bold red] {exc}")
+        console.print("[dim]Use --debug to see full traceback.[/dim]")
+        sys.exit(1)
+
+
+@app.command("impact")
+def impact_command(
+    ctx: typer.Context,
+    file: Path | None = typer.Option(None, "--file", "-f", help="Target project file to analyze"),
+    symbol: str | None = typer.Option(None, "--symbol", "-s", help="Target function, method, or class symbol"),
+    dependency: str | None = typer.Option(None, "--dependency", help="Target external dependency package"),
+    depth: int = typer.Option(3, "--depth", "-d", help="Maximum downstream traversal depth"),
+    direct: bool = typer.Option(False, "--direct", help="Limit analysis to direct impact only (equivalent to depth 1)"),
+    json_output: bool = typer.Option(False, "--json", help="Output results in machine-readable JSON format"),
+    root: Path | None = typer.Option(None, "--root", "-r", help="Explicit project root directory"),
+) -> None:
+    """Analyze downstream impact of modifying a file, symbol, or dependency."""
+    debug = ctx.obj.get("debug", False)
+    try:
+        run_impact(
+            file=file,
+            symbol=symbol,
+            dependency=dependency,
+            depth=depth,
+            direct=direct,
+            json_output=json_output,
+            root=root,
+        )
     except MSKError as exc:
         if debug:
             raise

@@ -4,6 +4,8 @@ import json
 import sqlite3
 from typing import TYPE_CHECKING
 
+from msk.graph.graph import KnowledgeGraph
+from msk.graph.nodes import GraphEdge, GraphNode
 from msk.graph.relationships import RelationshipType
 from msk.knowledge.models import (
     ApiEndpointEntity,
@@ -821,3 +823,160 @@ class KnowledgeRepository:
                 sensitive_files=sensitive_file_count,
                 status="READY",
             )
+
+    def get_file_by_path(self, project_id: str, path: str, conn: sqlite3.Connection | None = None) -> FileEntity | None:
+        """Fetch a single file entity by project-relative path."""
+        def _op(c: sqlite3.Connection) -> FileEntity | None:
+            norm_path = path.replace("\\", "/")
+            row = c.execute(
+                "SELECT * FROM files WHERE project_id = ? AND (path = ? OR path = ?)",
+                (project_id, norm_path, path),
+            ).fetchone()
+            if not row:
+                return None
+            return FileEntity(
+                id=row["id"],
+                project_id=row["project_id"],
+                path=row["path"],
+                language=row["language"],
+                file_type=row["file_type"] if "file_type" in row.keys() else "source",
+                size_bytes=row["size_bytes"],
+                content_hash=row["content_hash"],
+                structural_hash=row["structural_hash"],
+                modified_at=row["modified_at"],
+                is_test=bool(row["is_test"]) if "is_test" in row.keys() else False,
+                is_sensitive=bool(row["is_sensitive"]) if "is_sensitive" in row.keys() else False,
+                security_flags=json.loads(row["security_flags"]) if ("security_flags" in row.keys() and row["security_flags"]) else [],
+                imports=json.loads(row["imports_json"]) if ("imports_json" in row.keys() and row["imports_json"]) else [],
+            )
+
+        if conn is not None:
+            return _op(conn)
+        with self.db.transaction() as c:
+            return _op(c)
+
+    def get_symbols_by_file_id(self, file_id: str, conn: sqlite3.Connection | None = None) -> list[SymbolEntity]:
+        """Fetch all symbols defined within a specific file."""
+        def _op(c: sqlite3.Connection) -> list[SymbolEntity]:
+            rows = c.execute(
+                "SELECT * FROM symbols WHERE file_id = ? ORDER BY line_start, name",
+                (file_id,),
+            ).fetchall()
+            return [
+                SymbolEntity(
+                    id=r["id"],
+                    file_id=r["file_id"],
+                    name=r["name"],
+                    type=r["type"],
+                    parent_symbol=r["parent_symbol"],
+                    line_start=r["line_start"],
+                    line_end=r["line_end"],
+                    visibility=r["visibility"],
+                    is_test=bool(r["is_test"]) if "is_test" in r.keys() else False,
+                    is_api_endpoint=bool(r["is_api_endpoint"]) if "is_api_endpoint" in r.keys() else False,
+                    api_route=r["api_route"] if "api_route" in r.keys() else None,
+                    api_method=r["api_method"] if "api_method" in r.keys() else None,
+                    calls=json.loads(r["calls_json"]) if ("calls_json" in r.keys() and r["calls_json"]) else [],
+                )
+                for r in rows
+            ]
+
+        if conn is not None:
+            return _op(conn)
+        with self.db.transaction() as c:
+            return _op(c)
+
+    def get_symbols_by_name(self, project_id: str, name: str, conn: sqlite3.Connection | None = None) -> list[SymbolEntity]:
+        """Fetch symbols matching a given name across the project."""
+        def _op(c: sqlite3.Connection) -> list[SymbolEntity]:
+            rows = c.execute(
+                """
+                SELECT s.* FROM symbols s
+                JOIN files f ON s.file_id = f.id
+                WHERE f.project_id = ? AND s.name = ?
+                ORDER BY f.path, s.line_start
+                """,
+                (project_id, name),
+            ).fetchall()
+            return [
+                SymbolEntity(
+                    id=r["id"],
+                    file_id=r["file_id"],
+                    name=r["name"],
+                    type=r["type"],
+                    parent_symbol=r["parent_symbol"],
+                    line_start=r["line_start"],
+                    line_end=r["line_end"],
+                    visibility=r["visibility"],
+                    is_test=bool(r["is_test"]) if "is_test" in r.keys() else False,
+                    is_api_endpoint=bool(r["is_api_endpoint"]) if "is_api_endpoint" in r.keys() else False,
+                    api_route=r["api_route"] if "api_route" in r.keys() else None,
+                    api_method=r["api_method"] if "api_method" in r.keys() else None,
+                    calls=json.loads(r["calls_json"]) if ("calls_json" in r.keys() and r["calls_json"]) else [],
+                )
+                for r in rows
+            ]
+
+        if conn is not None:
+            return _op(conn)
+        with self.db.transaction() as c:
+            return _op(c)
+
+    def build_knowledge_graph(self, project_id: str, conn: sqlite3.Connection | None = None) -> KnowledgeGraph:
+        """Construct an in-memory KnowledgeGraph populated with project files, symbols, and edges."""
+        graph = KnowledgeGraph()
+        files = self.get_all_files(project_id, conn=conn)
+        symbols = self.get_all_symbols(project_id, conn=conn)
+        relationships = self.get_all_relationships(project_id, conn=conn)
+
+        for f in files:
+            graph.add_node(
+                GraphNode(
+                    id=f.id,
+                    type="file",
+                    label=f.path,
+                    properties={
+                        "file_id": f.id,
+                        "path": f.path,
+                        "language": f.language,
+                        "file_type": f.file_type,
+                        "is_test": f.is_test,
+                    },
+                )
+            )
+
+        for s in symbols:
+            graph.add_node(
+                GraphNode(
+                    id=s.id,
+                    type="symbol",
+                    label=s.name,
+                    properties={
+                        "symbol_id": s.id,
+                        "name": s.name,
+                        "type": s.type,
+                        "file_id": s.file_id,
+                        "parent_symbol": s.parent_symbol,
+                        "line_start": s.line_start,
+                        "line_end": s.line_end,
+                        "is_test": s.is_test,
+                        "is_api_endpoint": s.is_api_endpoint,
+                        "api_route": s.api_route,
+                        "api_method": s.api_method,
+                    },
+                )
+            )
+
+        for r in relationships:
+            props = json.loads(r.metadata_json) if r.metadata_json else {}
+            graph.add_edge(
+                GraphEdge(
+                    id=r.id,
+                    source_id=r.source_id,
+                    target_id=r.target_id,
+                    relationship_type=r.relationship_type,
+                    properties=props,
+                )
+            )
+
+        return graph
