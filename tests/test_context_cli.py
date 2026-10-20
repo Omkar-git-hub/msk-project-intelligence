@@ -22,7 +22,12 @@ def strip_ansi(text: str) -> str:
 
 def test_cli_context_help() -> None:
     """Test msk context --help displays all arguments and description."""
-    result = runner.invoke(app, ["context", "--help"], color=False, env={"NO_COLOR": "1", "TERM": "dumb"})
+    result = runner.invoke(
+        app,
+        ["context", "--help"],
+        color=False,
+        env={"NO_COLOR": "1", "TERM": "dumb"},
+    )
     assert result.exit_code == 0
     clean_stdout = strip_ansi(result.stdout)
     assert "Select and rank relevant project context" in clean_stdout
@@ -39,12 +44,22 @@ def test_cli_context_question_human_output(tmp_path: Path) -> None:
     """Test human-readable output of msk context --question."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
     result = runner.invoke(
         app,
-        ["context", "--question", "How does process_payment work?", "--root", str(target)],
+        [
+            "context",
+            "--question",
+            "How does process_payment work?",
+            "--root",
+            str(target),
+        ],
     )
     assert result.exit_code == 0
     clean_out = strip_ansi(result.stdout)
@@ -58,12 +73,23 @@ def test_cli_context_file_json_output(tmp_path: Path) -> None:
     """Test machine-readable JSON output of msk context --file --json."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
     result = runner.invoke(
         app,
-        ["context", "--file", "src/payment/service.py", "--json", "--root", str(target)],
+        [
+            "context",
+            "--file",
+            "src/payment/service.py",
+            "--json",
+            "--root",
+            str(target),
+        ],
     )
     assert result.exit_code == 0
     data = json.loads(result.stdout)
@@ -81,57 +107,95 @@ def test_cli_context_symbol_and_file(tmp_path: Path) -> None:
     """Test symbol context selection with specific file."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
     result = runner.invoke(
         app,
         [
             "context",
-            "--symbol", "process_payment",
-            "--file", "src/payment/service.py",
+            "--symbol",
+            "process_payment",
+            "--file",
+            "src/payment/service.py",
             "--json",
-            "--root", str(target),
+            "--root",
+            str(target),
         ],
     )
     assert result.exit_code == 0
     data = json.loads(result.stdout)
-    assert any("process_payment" in item["name"] for item in data["selected_items"])
+    assert any(
+        "process_payment" in item["name"]
+        for item in data["selected_items"]
+    )
 
 
 def test_cli_context_error_file(tmp_path: Path) -> None:
     """Test error stack trace provided via --error-file."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
     err_file = target / "trace.log"
     err_file.write_text(
-        'File "src/payment/service.py", line 25, in process_payment\nValueError: invalid transaction',
+        'File "src/payment/service.py", line 25, in process_payment\n'
+        "ValueError: invalid transaction",
         encoding="utf-8",
     )
 
     result = runner.invoke(
         app,
-        ["context", "--error-file", "trace.log", "--json", "--root", str(target)],
+        [
+            "context",
+            "--error-file",
+            "trace.log",
+            "--json",
+            "--root",
+            str(target),
+        ],
     )
     assert result.exit_code == 0
     data = json.loads(result.stdout)
     assert data["request_summary"]["has_error"] is True
-    assert any("service.py" in item["file_path"] for item in data["selected_items"])
+    assert any(
+        "service.py" in item["file_path"]
+        for item in data["selected_items"]
+    )
 
 
 def test_cli_context_budget_enforcement(tmp_path: Path) -> None:
     """Test setting a tight token budget."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
     result = runner.invoke(
         app,
-        ["context", "--file", "src/payment/service.py", "--budget", "150", "--json", "--root", str(target)],
+        [
+            "context",
+            "--file",
+            "src/payment/service.py",
+            "--budget",
+            "150",
+            "--json",
+            "--root",
+            str(target),
+        ],
     )
     assert result.exit_code == 0
     data = json.loads(result.stdout)
@@ -144,40 +208,64 @@ def test_cli_context_secret_redaction(tmp_path: Path) -> None:
     """Test that secrets in CLI inputs are scrubbed before output."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
-    dummy_aws_key = "".join(["AK", "IA", "12345678", "90ABCDEF"])
+    # Build a synthetic secret-like marker without embedding a credential.
+    dummy_key = "-".join(("FAKE", "AWS", "TEST", "KEY"))
+    key_name = "_".join(("api", "key"))
+
+    question = (
+        f"Why did request with {key_name}={dummy_key} "
+        "fail in service?"
+    )
+
     result = runner.invoke(
         app,
         [
             "context",
-            "--question", f"Why did request with api_key={dummy_aws_key} fail in service?",
+            "--question",
+            question,
             "--json",
-            "--root", str(target),
+            "--root",
+            str(target),
         ],
     )
+
     assert result.exit_code == 0
-    assert dummy_aws_key not in result.stdout
+    assert dummy_key not in result.stdout
+
     data = json.loads(result.stdout)
     assert "[REDACTED_SECRET]" in data["request_summary"]["question"]
     assert data["privacy_summary"]["redactions_count"] > 0
 
 
 def test_cli_context_uninitialized_project(tmp_path: Path) -> None:
-    """Test running context command on uninitialized directory fails with error."""
+    """Test running context command on uninitialized directory fails."""
     uninit = tmp_path / "empty_dir"
     uninit.mkdir()
-    result = runner.invoke(app, ["context", "--question", "hello", "--root", str(uninit)])
+
+    result = runner.invoke(
+        app,
+        ["context", "--question", "hello", "--root", str(uninit)],
+    )
     assert result.exit_code == 1
     assert "No MSK project initialized" in result.stdout
 
 
 def test_cli_context_no_arguments_error(tmp_path: Path) -> None:
-    """Test running context command without any query parameters fails."""
+    """Test running context command without query parameters fails."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
     result = runner.invoke(app, ["context", "--root", str(target)])
@@ -189,9 +277,24 @@ def test_cli_context_invalid_budget_error(tmp_path: Path) -> None:
     """Test running context command with zero budget fails."""
     fixture_dir = Path("tests/fixtures/payment_service").resolve()
     target = tmp_path / "payment_service"
-    shutil.copytree(fixture_dir, target, ignore=shutil.ignore_patterns(".msk"))
+    shutil.copytree(
+        fixture_dir,
+        target,
+        ignore=shutil.ignore_patterns(".msk"),
+    )
     run_init(root=target, force=True)
 
-    result = runner.invoke(app, ["context", "--file", "src/payment/service.py", "--budget", "0", "--root", str(target)])
+    result = runner.invoke(
+        app,
+        [
+            "context",
+            "--file",
+            "src/payment/service.py",
+            "--budget",
+            "0",
+            "--root",
+            str(target),
+        ],
+    )
     assert result.exit_code == 1
     assert "Invalid context budget" in result.stdout
