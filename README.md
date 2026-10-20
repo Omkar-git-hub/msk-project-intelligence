@@ -94,7 +94,12 @@ msk update
 msk impact --file src/payment/service.py
 msk impact --symbol process_payment --file src/payment/service.py
 
-# 6. Force a full re-analysis
+# 6. Select ranked, privacy-safe context for a question, file, or error
+msk context --question "How does payment processing work?"
+msk context --file src/payment/service.py --budget 1500
+msk context --error "ValueError: transaction failed in process_payment"
+
+# 7. Force a full re-analysis
 msk init --force
 ```
 
@@ -102,13 +107,14 @@ msk init --force
 
 ## CLI Reference
 
-| Command      | Description                                                           |
-| ------------ | --------------------------------------------------------------------- |
-| `msk init`   | Analyze the project and build the Project Knowledge Model             |
-| `msk status` | Display project intelligence: files, symbols, dependencies, security  |
-| `msk update` | Incrementally update the knowledge model based on changed files       |
-| `msk impact` | Analyze downstream impact of modifying a file, symbol, or dependency  |
-| `msk doctor` | Diagnose environment: Python, Tree-sitter parsers, Git, database      |
+| Command       | Description                                                            |
+| ------------- | ---------------------------------------------------------------------- |
+| `msk init`    | Analyze the project and build the Project Knowledge Model              |
+| `msk status`  | Display project intelligence: files, symbols, dependencies, security   |
+| `msk update`  | Incrementally update the knowledge model based on changed files        |
+| `msk impact`  | Analyze downstream impact of modifying a file, symbol, or dependency   |
+| `msk context` | Select and rank relevant, privacy-safe project context for queries     |
+| `msk doctor`  | Diagnose environment: Python, Tree-sitter parsers, Git, database       |
 
 ### Global Options
 
@@ -234,14 +240,125 @@ msk impact --file src/payment/service.py --json
 
 ---
 
+### Smart Context Engine (Phase 5)
+
+MSK answers: *"What is the minimum, most relevant, privacy-safe project context an AI or developer needs to answer this question or debug this error?"*
+
+Traditional AI assistants dump entire codebases or blind file selections into cloud prompts. The **Smart Context Engine** operates **100% offline and locally**, querying your verified project knowledge model to select, rank, and budget the most relevant context while scrubbing secrets and excluding sensitive files.
+
+> [!NOTE]
+> **Context Preparation Only**: Phase 5 prepares and budgets context locally. It does not connect to an external LLM, make remote API calls, or modify source code. Pluggable local and cloud LLM gateways are scheduled for Phase 6.
+
+#### Key Capabilities
+
+1. **Multi-Modal Query Input (`msk context`)**:
+   - Natural-language developer questions (`--question "How does payment processing work?"`)
+   - Target focus files (`--file src/payment/service.py`)
+   - Target code symbols (`--symbol process_payment`)
+   - Error logs or stack traces (`--error "ValueError: transaction failed"` or `--error-file trace.log`)
+   - Configurable token budget (`--budget 2000`, default: 2,000 tokens)
+2. **Explainable Relevance Ranking**:
+   - **Exact Target Match** (100.0 pts): Explicitly queried files or symbols.
+   - **Stack Trace Frames** (95.0 pts): Files, symbols, and line numbers parsed from Python, Java, or TS/JS error traces.
+   - **Containment** (85.0 pts): Symbols declared in target files, or files declaring target symbols.
+   - **Direct Callers & Tests** (75.0 pts): Depth-1 callers, callees, and test targets.
+   - **Direct File Dependencies** (70.0 pts): Files importing or imported by the target file.
+   - **Query Keyword Matches** (60.0 pts): Exact and partial identifier matches from natural language descriptions.
+   - **Transitive Impact** (25.0 - 40.0 pts): Multi-hop callers and dependent files reachable via graph paths.
+   - **APIs, Infra & Security** (25.0 - 45.0 pts): Associated route handlers, Docker/k8s configs, and security findings.
+   - **Deterministic Tie-Breaking**: Items with equal score break ties stably by `(-score, type_priority, file_path, name, id)`.
+3. **Token Budgeting & Selection**:
+   - Uses a documented, deterministic token estimator approximating BPE tokenizers without heavy external dependencies.
+   - Deduplicates redundant representations across files and symbols.
+   - Transparently records all candidates that were omitted due to budget constraints, including their scores and required tokens.
+4. **Local Privacy & Data Minimization**:
+   - **Secret Scrubbing**: Automatically scrubs passwords, bearer tokens, AWS keys, GitHub tokens, Slack tokens, and private keys from queries and stack traces.
+   - **Sensitive File Exclusion**: Excludes credentials, certificates, and keys (`.env`, `*.pem`, `*.key`, `id_rsa`) from context.
+   - **Code Minimization**: Surfacing symbol signatures, line ranges, docstrings, and relationships rather than raw full-file dumps.
+   - **Transparency & Limits**: Reports redactions and notes that heuristic pattern matching cannot guarantee 100% detection of custom or obfuscated secrets.
+
+#### CLI Usage Examples
+
+```bash
+# Query context with a developer question
+msk context --question "How does process_payment work?"
+
+# Focus context on a specific file within a 1,500 token budget
+msk context --file src/payment/service.py --budget 1500
+
+# Focus context on a specific symbol and file
+msk context --symbol process_payment --file src/payment/service.py
+
+# Diagnose a runtime error or stack trace
+msk context --error "ValueError: Invalid currency in process_payment"
+
+# Provide a stack trace from a log file
+msk context --error-file runtime_error.log
+
+# Export machine-readable context in JSON format for future LLM integration
+msk context --file src/payment/service.py --json
+```
+
+#### JSON Output Format
+
+When invoked with `--json`, `msk context` emits a structured, machine-readable payload suitable for developer tooling and future LLM gateways:
+
+```json
+{
+  "project_name": "payment_service",
+  "analyzed_at": "2026-10-20T22:20:00Z",
+  "request_summary": {
+    "question": "How does payment processing work?",
+    "file": "src/payment/service.py",
+    "symbol": null,
+    "has_error": false,
+    "budget_tokens": 2000
+  },
+  "budget_metrics": {
+    "token_budget": 2000,
+    "estimated_tokens_used": 640,
+    "utilization_pct": 32.0,
+    "total_candidates": 14,
+    "selected_count": 8,
+    "omitted_count": 6
+  },
+  "privacy_summary": {
+    "local_only": true,
+    "redactions_count": 0,
+    "excluded_sensitive_files": [],
+    "notes": [...]
+  },
+  "selected_items": [
+    {
+      "id": "file:f_123",
+      "name": "src/payment/service.py",
+      "item_type": "file",
+      "file_path": "src/payment/service.py",
+      "relevance_score": 100.0,
+      "reasons": ["Explicitly requested file 'src/payment/service.py'"],
+      "snippet": "...",
+      "estimated_tokens": 85,
+      "metadata": {...}
+    }
+  ],
+  "relationships": [...],
+  "related_tests": ["test_process_payment (tests/test_payment_service.py)"],
+  "omitted_items": [...],
+  "warnings": [],
+  "llm_context": "# Project Context: payment_service\n..."
+}
+```
+
+---
+
 ## Privacy & Security
 
 MSK is designed with privacy as a core architectural concern:
 
-- **Local-only analysis**: All scanning and parsing happens on your machine. No data leaves your system.
-- **No raw secrets stored**: The security scanner detects credentials but **never stores the actual secret values**. Only metadata (rule ID, severity, line number, sanitized description) is persisted.
-- **Sensitive file detection**: Files matching patterns like `.env`, `*.key`, `*.pem`, `id_rsa` are flagged.
-- **No source code copies**: The `.msk/` directory never contains copies of your source code—only extracted metadata.
+- **Local-only analysis**: All scanning, parsing, impact analysis, and context selection happen 100% locally. No data leaves your machine.
+- **No raw secrets stored or sent**: Secret scanner and context privacy filters detect credentials and redact them with `[REDACTED_SECRET]`.
+- **Sensitive file exclusion**: Files matching patterns like `.env`, `*.key`, `*.pem`, `id_rsa` are automatically excluded from context.
+- **No source code copies**: The `.msk/` directory never stores source code copies—only structural metadata.
 - **Git-ignored databases**: SQLite databases and caches are git-ignored by default.
 
 ---
@@ -261,19 +378,8 @@ msk/
 ├── graph/         # In-memory and SQL graph relationship queries
 ├── changes/       # SHA-256 content and structural fingerprinting, Git integration
 ├── impact/        # Impact analysis engine, graph traversal, deterministic reporting
+├── context/       # Smart Context Engine: ranking, token budgeting, privacy scrubbing
 └── cli/           # Typer CLI commands with Rich terminal UI
-```
-
-### Data Flow
-
-```text
-Source Files → Project Scanner → File Analyzer → Knowledge Builder → SQLite + JSON Exports
-                                      ↓
-                              Tree-sitter Parser
-                              Symbol Extractor
-                              Import Resolver
-                              Security Scanner
-                              Infrastructure Detector
 ```
 
 ---
@@ -342,7 +448,7 @@ This is `v0.1.0-alpha.1`. The following limitations apply:
 - [x] **Phase 2**: Hardened Knowledge Model (tests, APIs, infrastructure, security)
 - [x] **Phase 3**: Incremental Change Engine & Knowledge Model Consistency
 - [x] **Phase 4**: Impact Analysis Engine
-- [ ] **Phase 5**: Privacy, Secret & PII Scanning Engine
+- [x] **Phase 5**: Smart Context Engine & Local Privacy Boundary
 - [ ] **Phase 6**: Pluggable AI / LLM Gateway (Local & Cloud)
 - [ ] **Phase 7**: AI Commands (`msk ask`, `msk explain`, `msk fix`)
 - [ ] **Phase 8**: Error & Incident Investigation
@@ -352,3 +458,4 @@ This is `v0.1.0-alpha.1`. The following limitations apply:
 ## License
 
 Apache-2.0
+
