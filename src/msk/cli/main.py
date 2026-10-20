@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from msk.cli.context import run_context
 from msk.cli.doctor import run_doctor
 from msk.cli.impact import run_impact
 from msk.cli.init import run_init
@@ -150,6 +151,46 @@ def impact_command(
             dependency=dependency,
             depth=depth,
             direct=direct,
+            json_output=json_output,
+            root=root,
+        )
+    except MSKError as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]MSK Error:[/bold red] {exc.message}")
+        if exc.hint:
+            console.print(f"[yellow]Run:[/yellow] {exc.hint}")
+        sys.exit(1)
+    except Exception as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]Unexpected Error:[/bold red] {exc}")
+        console.print("[dim]Use --debug to see full traceback.[/dim]")
+        sys.exit(1)
+
+
+@app.command("context")
+def context_command(
+    ctx: typer.Context,
+    question: str | None = typer.Option(None, "--question", "-q", help="Developer query, task, or debugging question"),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Target project file to focus context on"),
+    symbol: str | None = typer.Option(None, "--symbol", "-s", help="Target function, method, or class symbol"),
+    error: str | None = typer.Option(None, "--error", "-e", help="Error text or stack trace to analyze"),
+    error_file: Path | None = typer.Option(None, "--error-file", help="Path to file containing error text or stack trace"),
+    budget: int = typer.Option(2000, "--budget", "-b", help="Context token budget limit"),
+    json_output: bool = typer.Option(False, "--json", help="Output results in machine-readable JSON format"),
+    root: Path | None = typer.Option(None, "--root", "-r", help="Explicit project root directory"),
+) -> None:
+    """Select and rank relevant project context for a question, file, symbol, or error."""
+    debug = ctx.obj.get("debug", False)
+    try:
+        run_context(
+            question=question,
+            file=file,
+            symbol=symbol,
+            error=error,
+            error_file=error_file,
+            budget=budget,
             json_output=json_output,
             root=root,
         )
