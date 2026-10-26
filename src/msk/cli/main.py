@@ -10,6 +10,7 @@ from msk.cli.context import run_context
 from msk.cli.doctor import run_doctor
 from msk.cli.impact import run_impact
 from msk.cli.init import run_init
+from msk.cli.policy import policy_app
 from msk.cli.status import run_status
 from msk.cli.update import run_update
 from msk.common.errors import MSKError
@@ -21,6 +22,9 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+# Register policy command group
+app.add_typer(policy_app, name="policy")
 
 console = Console()
 
@@ -178,6 +182,8 @@ def context_command(
     error: str | None = typer.Option(None, "--error", "-e", help="Error text or stack trace to analyze"),
     error_file: Path | None = typer.Option(None, "--error-file", help="Path to file containing error text or stack trace"),
     budget: int = typer.Option(2000, "--budget", "-b", help="Context token budget limit"),
+    target: str = typer.Option("local", "--target", "-t", help="Context transmission target: 'local' or 'external'"),
+    provider: str | None = typer.Option(None, "--provider", "-p", help="Target AI provider name"),
     json_output: bool = typer.Option(False, "--json", help="Output results in machine-readable JSON format"),
     root: Path | None = typer.Option(None, "--root", "-r", help="Explicit project root directory"),
 ) -> None:
@@ -193,6 +199,8 @@ def context_command(
             budget=budget,
             json_output=json_output,
             root=root,
+            target=target,
+            provider=provider,
         )
     except MSKError as exc:
         if debug:

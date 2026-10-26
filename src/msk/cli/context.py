@@ -12,6 +12,7 @@ from msk.config.loader import get_msk_dir, load_project_config
 from msk.context.engine import ContextEngine
 from msk.context.models import ContextRequest, ContextResult
 from msk.knowledge.repository import KnowledgeRepository
+from msk.policy.models import PolicyDecisionOutcome
 from msk.project.detector import find_project_root
 from msk.storage.database import DatabaseManager
 
@@ -27,6 +28,8 @@ def run_context(
     budget: int = 2000,
     json_output: bool = False,
     root: Path | None = None,
+    target: str = "local",
+    provider: str | None = None,
 ) -> None:
     """Prepare ranked, privacy-safe, budget-aware project context for developer inquiries."""
     project_root = (root or find_project_root()).resolve()
@@ -75,6 +78,42 @@ def run_context(
     engine = ContextEngine(repo, config.id, project_root)
 
     result = engine.build_context(req)
+
+    # If external destination is requested, enforce sharing policy
+    if target.lower() != "local":
+        transmitted, decision = engine.evaluate_sharing_policy(
+            result=result,
+            destination=target,
+            provider=provider,
+        )
+        if decision.outcome == PolicyDecisionOutcome.DENY:
+            if json_output:
+                print(
+                    json.dumps(
+                        {
+                            "status": "DENIED",
+                            "policy_decision": decision.model_dump(),
+                        },
+                        indent=2,
+                    )
+                )
+                return
+            console.print()
+            console.print(
+                Panel(
+                    f"[bold red]External Context Transmission Blocked by Policy[/bold red]\n\n"
+                    f"Outcome:       [bold red]{decision.outcome.value}[/bold red]\n"
+                    f"Reason Code:   [bold yellow]{decision.reason_code}[/bold yellow]\n"
+                    f"Destination:   [cyan]{decision.destination}[/cyan]\n"
+                    f"Details:       {decision.explanation}",
+                    title="MSK Privacy Policy Gate",
+                    border_style="red",
+                )
+            )
+            console.print()
+            return
+        if transmitted is not None:
+            result = transmitted
 
     if json_output:
         print(json.dumps(result.model_dump(), indent=2))
@@ -187,7 +226,10 @@ def _print_human_context(res: ContextResult) -> None:
 
     # Omitted Items Summary
     if res.omitted_items:
-        omitted_summary = f"[yellow]{len(res.omitted_items)} candidate entities[/yellow] were omitted to stay within the {bm.token_budget} token budget limit."
+        omitted_summary = (
+            f"[yellow]{len(res.omitted_items)} candidate entities[/yellow] were omitted to stay within the "
+            f"{bm.token_budget} token budget limit."
+        )
         sample_names = ", ".join(i.name for i in res.omitted_items[:5])
         if len(res.omitted_items) > 5:
             sample_names += f" (+{len(res.omitted_items) - 5} more)"
@@ -201,8 +243,14 @@ def _print_human_context(res: ContextResult) -> None:
         "[green][OK][/green] Local analysis: [bold]100% offline[/bold] (no data sent to external AI services)",
         f"Secret Redactions: [bold]{priv.redactions_count}[/bold] credential patterns sanitized",
     ]
+    if res.policy_decision:
+        priv_lines.append(
+            f"Policy Decision: [bold]{res.policy_decision.outcome.value}[/bold] ({res.policy_decision.reason_code})"
+        )
     if priv.excluded_sensitive_files:
-        priv_lines.append(f"Excluded Sensitive Files: [bold]{len(priv.excluded_sensitive_files)}[/bold] ({', '.join(priv.excluded_sensitive_files)})")
+        priv_lines.append(
+            f"Excluded Sensitive Files: [bold]{len(priv.excluded_sensitive_files)}[/bold] ({', '.join(priv.excluded_sensitive_files)})"
+        )
     priv_lines.append("[dim]" + priv.notes[-1] + "[/dim]")
 
     console.print(Panel("\n".join(priv_lines), title="Privacy & Data Minimization", border_style="green"))
