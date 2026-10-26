@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from msk.policy.models import PolicyDecision
+
 
 class ContextItemType(StrEnum):
     """Types of project intelligence entities that can be included in context."""
@@ -98,3 +100,4 @@ class ContextResult(BaseModel):
     omitted_items: list[OmittedItem] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     llm_context: str = ""
+    policy_decision: PolicyDecision | None = None

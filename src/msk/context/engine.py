@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from msk.common.errors import MSKError
+from msk.config.loader import load_policy_config
+from msk.config.models import PolicyConfig
 from msk.context.budget import select_items_within_budget
 from msk.context.models import (
     ContextItem,
@@ -16,15 +18,25 @@ from msk.context.privacy import PrivacyFilter
 from msk.context.retriever import ContextRetriever
 from msk.knowledge.models import ProjectEntity
 from msk.knowledge.repository import KnowledgeRepository
+from msk.policy.audit import PolicyAuditor
+from msk.policy.boundary import PolicyEnforcementBoundary
+from msk.policy.models import PolicyDecision
 
 
 class ContextEngine:
     """Orchestrates local-first smart context selection, ranking, budgeting, and privacy protection."""
 
-    def __init__(self, repo: KnowledgeRepository, project_id: str, project_root: Path) -> None:
+    def __init__(
+        self,
+        repo: KnowledgeRepository,
+        project_id: str,
+        project_root: Path,
+        policy: PolicyConfig | None = None,
+    ) -> None:
         self.repo = repo
         self.project_id = project_id
         self.project_root = Path(project_root).resolve()
+        self.policy = policy or load_policy_config(self.project_root, fallback_to_default=True)
 
         # Load project entity
         self.project = self.repo.get_project(self.project_id)
@@ -141,7 +153,7 @@ class ContextEngine:
 
         now_iso = datetime.now(UTC).isoformat()
 
-        return ContextResult(
+        res = ContextResult(
             project_name=self.project_name,
             analyzed_at=now_iso,
             request_summary=request_summary,
@@ -153,6 +165,37 @@ class ContextEngine:
             omitted_items=omitted_items,
             warnings=retriever.warnings,
             llm_context=llm_context,
+        )
+
+        # Evaluate local policy
+        auditor = PolicyAuditor(db=self.repo.db, project_root=self.project_root)
+        boundary = PolicyEnforcementBoundary(
+            policy=self.policy,
+            auditor=auditor,
+            project_id=self.project_id,
+        )
+        _, decision = boundary.enforce_transmission(res, destination="local")
+        res.policy_decision = decision
+
+        return res
+
+    def evaluate_sharing_policy(
+        self,
+        result: ContextResult,
+        destination: str = "local",
+        provider: str | None = None,
+    ) -> tuple[ContextResult | None, PolicyDecision]:
+        """Evaluate and enforce policy constraints for transmitting context to a destination."""
+        auditor = PolicyAuditor(db=self.repo.db, project_root=self.project_root)
+        boundary = PolicyEnforcementBoundary(
+            policy=self.policy,
+            auditor=auditor,
+            project_id=self.project_id,
+        )
+        return boundary.enforce_transmission(
+            context_result=result,
+            destination=destination,
+            provider=provider,
         )
 
     def _format_llm_context(

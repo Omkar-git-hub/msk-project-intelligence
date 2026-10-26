@@ -133,6 +133,24 @@ CREATE TABLE IF NOT EXISTS git_snapshots (
     is_dirty INTEGER NOT NULL,
     captured_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS policy_audit_logs (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    provider TEXT,
+    outcome TEXT NOT NULL,
+    reason_code TEXT NOT NULL,
+    rule_id TEXT,
+    categories_json TEXT NOT NULL,
+    items_count INTEGER NOT NULL DEFAULT 0,
+    redactions_count INTEGER NOT NULL DEFAULT 0,
+    explanation TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_policy_audit_logs_project ON policy_audit_logs(project_id);
+CREATE INDEX IF NOT EXISTS idx_policy_audit_logs_timestamp ON policy_audit_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_policy_audit_logs_outcome ON policy_audit_logs(outcome);
 """
 
 
