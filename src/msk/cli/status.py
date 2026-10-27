@@ -98,6 +98,17 @@ def run_status(root: Path | None = None) -> None:
     console.print(f"  Sensitive files:  [green]{summary.sensitive_files}[/green]")
     console.print()
 
+    from msk.policy.integration import PolicyIntegrationService
+
+    policy_summary = PolicyIntegrationService.get_policy_summary(project_root)
+    console.print("Policy:")
+    console.print(f"  Sensitivity:      [cyan]{policy_summary['sensitivity'].capitalize()}[/cyan]")
+    ai_status = "[green]Enabled[/green]" if policy_summary["external_llm_enabled"] else "[yellow]Disabled (Local-only)[/yellow]"
+    console.print(f"  External AI:      {ai_status}")
+    console.print(f"  Allowed Providers: [dim]{', '.join(policy_summary['allowed_providers']) or 'none'}[/dim]")
+    console.print(f"  Audit Events:     [dim]{policy_summary['audit_events_count']}[/dim]")
+    console.print()
+
     status_color = "bold green" if summary.status == "READY" else "bold yellow"
     console.print(f"Status: [{status_color}]{summary.status}[/{status_color}]")
     console.print()

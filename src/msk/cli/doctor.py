@@ -107,6 +107,34 @@ def run_doctor(root: Path | None = None) -> bool:
     else:
         table.add_row("MSK Database", "[bold yellow]INFO[/bold yellow]", "Not initialized (run 'msk init')")
 
+    # 7. Privacy Policy Health
+    policy_file = msk_dir / "policy.json"
+    if msk_dir.is_dir():
+        if policy_file.is_file():
+            try:
+                from msk.config.loader import load_policy_config
+                from msk.policy.integration import PolicyIntegrationService
+
+                pol = load_policy_config(project_root)
+                summary = PolicyIntegrationService.get_policy_summary(project_root)
+                ai_desc = "Enabled" if pol.external_llm.enabled else "Disabled (Local-only)"
+                table.add_row(
+                    "Privacy Policy",
+                    "[bold green]PASS[/bold green]",
+                    f"Sensitivity: {pol.project_sensitivity} | External AI: {ai_desc} | Audited: {summary['audit_events_count']} events",
+                )
+            except Exception as exc:
+                all_ok = False
+                table.add_row("Privacy Policy", "[bold red]FAIL[/bold red]", f"Invalid policy configuration: {exc}")
+        else:
+            table.add_row(
+                "Privacy Policy",
+                "[bold yellow]WARN[/bold yellow]",
+                "Default fallback policy active (.msk/policy.json missing)",
+            )
+    else:
+        table.add_row("Privacy Policy", "[bold yellow]INFO[/bold yellow]", "Not initialized (run 'msk init')")
+
     console.print()
     console.print(table)
     console.print()

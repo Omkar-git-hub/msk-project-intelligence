@@ -26,6 +26,8 @@ def run_impact(
     direct: bool = False,
     json_output: bool = False,
     root: Path | None = None,
+    target: str = "local",
+    provider: str | None = None,
 ) -> None:
     """Run impact analysis for a file, symbol, or dependency and present results."""
     project_root = (root or find_project_root()).resolve()
@@ -80,6 +82,46 @@ def run_impact(
             direct_only=direct,
         )
 
+    # Policy Enforcement for External Transmission
+    from msk.policy.integration import PolicyIntegrationService
+
+    payload = {
+        "target": report.target_name,
+        "items": [
+            {"name": i.name, "file_path": i.file_path, "type": i.type, "category": str(i.category)}
+            for i in report.items
+        ],
+    }
+    allowed, _, decision = PolicyIntegrationService.enforce_external_payload(
+        payload=payload,
+        destination=target,
+        provider=provider,
+        project_root=project_root,
+        project_id=config.id,
+    )
+    report.policy_decision = decision
+
+    if not allowed:
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        "error": "PolicyViolation",
+                        "outcome": decision.outcome.value,
+                        "reason_code": decision.reason_code,
+                        "explanation": decision.explanation,
+                        "destination": target,
+                        "provider": provider,
+                    },
+                    indent=2,
+                )
+            )
+            return
+        raise MSKError(
+            f"External transmission blocked by policy: {decision.explanation}",
+            hint="Review privacy policy with 'msk policy show' or test locally with --target local.",
+        )
+
     # Output Presentation
     if json_output:
         # Machine-readable output (raw JSON)
@@ -103,6 +145,13 @@ def _print_human_report(report: ImpactReport) -> None:
         f"Affected Items: [bold]{report.total_affected}[/bold] "
         f"([green]{report.direct_count} direct[/green], [yellow]{report.transitive_count} transitive[/yellow])"
     )
+    if report.policy_decision and report.policy_decision.destination != "local":
+        console.print(
+            f"Policy:         [bold green]{report.policy_decision.outcome.value}[/bold green] "
+            f"([dim]{report.policy_decision.reason_code}[/dim])"
+        )
+        if report.policy_decision.provider:
+            console.print(f"Provider:       [cyan]{report.policy_decision.provider}[/cyan]")
     console.print()
 
     if report.total_affected == 0:

@@ -143,6 +143,8 @@ def impact_command(
     dependency: str | None = typer.Option(None, "--dependency", help="Target external dependency package"),
     depth: int = typer.Option(3, "--depth", "-d", help="Maximum downstream traversal depth"),
     direct: bool = typer.Option(False, "--direct", help="Limit analysis to direct impact only (equivalent to depth 1)"),
+    target: str = typer.Option("local", "--target", "-t", help="Context transmission target: 'local' or 'external'"),
+    provider: str | None = typer.Option(None, "--provider", "-p", help="Target AI provider name"),
     json_output: bool = typer.Option(False, "--json", help="Output results in machine-readable JSON format"),
     root: Path | None = typer.Option(None, "--root", "-r", help="Explicit project root directory"),
 ) -> None:
@@ -157,6 +159,8 @@ def impact_command(
             direct=direct,
             json_output=json_output,
             root=root,
+            target=target,
+            provider=provider,
         )
     except MSKError as exc:
         if debug:
