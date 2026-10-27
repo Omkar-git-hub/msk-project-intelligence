@@ -35,6 +35,7 @@ def export_project_knowledge(
     apis: list[ApiEndpointEntity] | None = None,
     infrastructure: list[InfrastructureEntity] | None = None,
     security_findings: list[SecurityFindingEntity] | None = None,
+    policy: object | None = None,
 ) -> None:
     """Generate deterministic JSON exports in export_dir with atomic file writing."""
     target_dir = Path(export_dir).resolve()
@@ -154,13 +155,33 @@ def export_project_knowledge(
     ]
     _atomic_write_json(target_dir / "security.json", sec_data)
 
+    # 8. policy.json (offline policy configuration snapshot)
+    if policy is not None:
+        if hasattr(policy, "model_dump"):
+            policy_data = policy.model_dump()
+        elif isinstance(policy, dict):
+            policy_data = policy
+        else:
+            policy_data = {"version": "1.0.0", "project_sensitivity": "internal"}
+    else:
+        policy_path = target_dir.parent / "policy.json"
+        if policy_path.is_file():
+            try:
+                policy_data = json.loads(policy_path.read_text(encoding="utf-8"))
+            except Exception:
+                policy_data = {"version": "1.0.0", "project_sensitivity": "internal"}
+        else:
+            policy_data = {"version": "1.0.0", "project_sensitivity": "internal"}
+    _atomic_write_json(target_dir / "policy.json", policy_data)
+
 
 def export_from_repository(
     repo: "KnowledgeRepository",
     project_id: str,
     export_dir: str | Path,
+    policy: object | None = None,
 ) -> None:
-    """Generate all 7 deterministic JSON exports directly from SQLite repository state."""
+    """Generate all deterministic JSON exports directly from SQLite repository state."""
     files = repo.get_all_files(project_id)
     symbols = repo.get_all_symbols(project_id)
     relationships = repo.get_all_relationships(project_id)
@@ -178,4 +199,5 @@ def export_from_repository(
         apis=apis,
         infrastructure=infra,
         security_findings=sec_findings,
+        policy=policy,
     )

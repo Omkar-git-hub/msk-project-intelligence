@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from msk.policy.models import PolicyDecision
+
 
 class ImpactCategory(StrEnum):
     """Semantic category explaining how/why an item is impacted."""
@@ -59,3 +61,4 @@ class ImpactReport(BaseModel):
     summary_by_category: dict[str, int] = Field(default_factory=dict)
     items: list[ImpactItem] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    policy_decision: PolicyDecision | None = None

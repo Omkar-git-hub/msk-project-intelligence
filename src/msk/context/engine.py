@@ -125,6 +125,7 @@ class ContextEngine:
             project_id=self.project_id,
             project_root=self.project_root,
             privacy_filter=privacy,
+            policy=self.policy,
         )
 
         candidates = retriever.retrieve_candidates(sanitized_request)

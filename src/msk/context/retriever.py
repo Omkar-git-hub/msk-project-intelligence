@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from msk.common.errors import MSKError
+from msk.config.models import PolicyConfig
 from msk.context.budget import estimate_tokens
 from msk.context.errors_parser import ParsedErrorContext, parse_error_text
 from msk.context.models import (
@@ -67,11 +68,13 @@ class ContextRetriever:
         project_id: str,
         project_root: Path,
         privacy_filter: PrivacyFilter,
+        policy: PolicyConfig | None = None,
     ) -> None:
         self.repo = repo
         self.project_id = project_id
         self.project_root = Path(project_root).resolve()
         self.privacy = privacy_filter
+        self.policy = policy
 
         # Pre-load knowledge entities
         self.files = self.repo.get_all_files(self.project_id)
@@ -231,6 +234,27 @@ class ContextRetriever:
         raw_items = list(candidates_map.values())
         return sort_and_rank_items(raw_items)
 
+    def _is_item_blocked_by_policy(
+        self,
+        file_path: str | None = None,
+        category: str | None = None,
+    ) -> bool:
+        """Check if an item is prohibited by active policy rules."""
+        if not self.policy:
+            return False
+
+        from msk.policy.integration import PolicyIntegrationService
+
+        if file_path and PolicyIntegrationService.is_file_blocked(file_path, self.policy):
+            if file_path not in self.privacy.excluded_files:
+                self.privacy.excluded_files.append(file_path)
+            return True
+
+        if category and PolicyIntegrationService.is_category_blocked(category, self.policy):
+            return True
+
+        return False
+
     def _add_file_candidate(
         self,
         candidates: dict[str, ContextItem],
@@ -240,6 +264,8 @@ class ContextRetriever:
     ) -> None:
         """Register or boost a file context candidate."""
         if not self.privacy.check_and_record_file(file_ent.path):
+            return
+        if self._is_item_blocked_by_policy(file_path=file_ent.path, category=ContextItemType.FILE):
             return
 
         item_id = f"file:{file_ent.id}"
@@ -287,6 +313,8 @@ class ContextRetriever:
     ) -> None:
         """Register or boost a symbol context candidate."""
         if not self.privacy.check_and_record_file(parent_file.path):
+            return
+        if self._is_item_blocked_by_policy(file_path=parent_file.path, category=ContextItemType.SYMBOL):
             return
 
         item_id = f"symbol:{sym.id}"
@@ -585,6 +613,8 @@ class ContextRetriever:
         """Add a test context item."""
         if not self.privacy.check_and_record_file(test_file.path):
             return
+        if self._is_item_blocked_by_policy(file_path=test_file.path, category=ContextItemType.TEST):
+            return
 
         item_id = f"test:{test_file.id}:{test_name}"
         if item_id in candidates:
@@ -633,6 +663,8 @@ class ContextRetriever:
 
             # Associated APIs
             for api in self.apis_by_file_id.get(f_ent.id, []):
+                if self._is_item_blocked_by_policy(file_path=f_ent.path, category=ContextItemType.API_ENDPOINT):
+                    continue
                 item_id = f"api:{api.id}"
                 if item_id not in candidates:
                     snippet = f"API Route: {api.http_method} {api.route}\nHandler: {api.handler_symbol or 'unknown'} in {f_ent.path}"
@@ -650,6 +682,8 @@ class ContextRetriever:
 
             # Associated Infrastructure
             for infra in self.infra_by_file_id.get(f_ent.id, []):
+                if self._is_item_blocked_by_policy(file_path=f_ent.path, category=ContextItemType.INFRASTRUCTURE):
+                    continue
                 item_id = f"infra:{infra.id}"
                 if item_id not in candidates:
                     snippet = f"Infrastructure: {infra.kind}\nDefined in: {f_ent.path}\nDetails: {infra.details or 'none'}"
@@ -667,6 +701,8 @@ class ContextRetriever:
 
             # Associated Security Findings
             for sec in self.security_by_file_id.get(f_ent.id, []):
+                if self._is_item_blocked_by_policy(file_path=f_ent.path, category=ContextItemType.SECURITY):
+                    continue
                 item_id = f"sec:{sec.id}"
                 if item_id not in candidates:
                     snippet = f"Security Finding: {sec.rule_id} [{sec.severity}]\nFile: {f_ent.path}:{sec.line_number or 1}\nDescription: {sec.description}"
