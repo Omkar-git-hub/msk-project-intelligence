@@ -19,6 +19,9 @@ def test_cli_help() -> None:
     assert "doctor" in result.stdout
     assert "update" in result.stdout
     assert "impact" in result.stdout
+    assert "provider" in result.stdout
+    assert "ask" in result.stdout
+    assert "explain" in result.stdout
 
 
 def test_cli_doctor(tmp_path: Path) -> None:
@@ -27,6 +30,7 @@ def test_cli_doctor(tmp_path: Path) -> None:
     assert "MSK System Doctor" in result.stdout
     assert "Python" in result.stdout
     assert "Tree-sitter AST" in result.stdout
+    assert "AI Providers" in result.stdout
 
 
 def test_cli_init_status_update_cycle(tmp_path: Path) -> None:
@@ -62,22 +66,29 @@ def test_cli_init_status_update_cycle(tmp_path: Path) -> None:
     assert "Symbols:" in status_post.stdout
     assert "Dependencies:" in status_post.stdout
     assert "Relationships:" in status_post.stdout
+    assert "AI Gateway:" in status_post.stdout
+    assert "Default Provider:" in status_post.stdout
 
-    # 4. msk init again without force -> fails with ProjectAlreadyInitializedError
+    # 4. msk doctor after init
+    doc_res = runner.invoke(app, ["doctor", "--root", str(target_proj)])
+    assert doc_res.exit_code == 0
+    assert "AI Providers" in doc_res.stdout
+
+    # 5. msk init again without force -> fails with ProjectAlreadyInitializedError
     init_dup = runner.invoke(app, ["init", "--root", str(target_proj)])
     assert init_dup.exit_code == 1
     assert "already exists" in init_dup.stdout
 
-    # 5. msk init with --force -> succeeds
+    # 6. msk init with --force -> succeeds
     init_force = runner.invoke(app, ["init", "--force", "--root", str(target_proj)])
     assert init_force.exit_code == 0
 
-    # 6. msk update when clean -> reports up to date
+    # 7. msk update when clean -> reports up to date
     update_clean = runner.invoke(app, ["update", "--root", str(target_proj)])
     assert update_clean.exit_code == 0
     assert "Everything up to date" in update_clean.stdout
 
-    # 7. Add a new file and run msk update
+    # 8. Add a new file and run msk update
     new_file = target_proj / "src" / "payment" / "extra.py"
     new_file.write_text("class ExtraService:\n    def run(self): pass\n", encoding="utf-8")
 
@@ -85,7 +96,7 @@ def test_cli_init_status_update_cycle(tmp_path: Path) -> None:
     assert update_added.exit_code == 0
     assert "Knowledge model successfully updated" in update_added.stdout
 
-    # 8. Test Regenerability: delete .msk and re-init
+    # 9. Test Regenerability: delete .msk and re-init
     shutil.rmtree(msk_dir)
     assert not msk_dir.exists()
 
