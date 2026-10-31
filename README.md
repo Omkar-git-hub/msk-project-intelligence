@@ -112,9 +112,12 @@ msk init --force
 | `msk init`    | Analyze the project and build the Project Knowledge Model              |
 | `msk status`  | Display project intelligence: files, symbols, dependencies, security   |
 | `msk update`  | Incrementally update the knowledge model based on changed files        |
-| `msk impact`  | Analyze downstream impact of modifying a file, symbol, or dependency   |
-| `msk context` | Select and rank relevant, privacy-safe project context for queries     |
-| `msk doctor`  | Diagnose environment: Python, Tree-sitter parsers, Git, database       |
+| `msk impact`   | Analyze downstream impact of modifying a file, symbol, or dependency   |
+| `msk context`  | Select and rank relevant, privacy-safe project context for queries     |
+| `msk provider` | Configure, list, and test local/cloud AI providers and models          |
+| `msk ask`      | Query project intelligence and AI with policy-approved context         |
+| `msk explain`  | Explain files, code symbols, or diagnose runtime error logs            |
+| `msk doctor`   | Diagnose environment: Python, Tree-sitter parsers, Git, database       |
 
 ### Global Options
 
@@ -349,6 +352,73 @@ When invoked with `--json`, `msk context` emits a structured, machine-readable p
 }
 ```
 
+
+---
+
+### Pluggable AI Gateway & Provider Management (Phase 8)
+
+MSK enables developers to connect local or cloud AI models without sacrificing privacy or writing custom code. All AI provider communications are routed through the fail-closed `PolicyGatedGateway` to ensure that **the project stays private and AI gets only what it needs**.
+
+#### Provider CLI Reference (`msk provider`)
+
+- **List Providers**: Inspect all configured providers, default election, and credential status.
+  ```bash
+  msk provider list
+  ```
+- **Add Provider**: Add a local or external provider dynamically without code changes.
+  ```bash
+  # Local Ollama daemon
+  msk provider add ollama --name "Local Ollama" --type ollama --endpoint http://localhost:11434 --model llama3 --auth-type none
+
+  # External OpenAI provider using environment variable reference
+  msk provider add openai --name "OpenAI Cloud" --type openai --model gpt-4o --auth-type bearer --credential-ref env:OPENAI_API_KEY
+  ```
+- **Set Default Provider**:
+  ```bash
+  msk provider set-default ollama
+  ```
+- **Connection Testing Framework**: Validate configuration, connectivity, authentication, model availability, and latency without sending project code:
+  ```bash
+  msk provider test ollama
+  msk provider test openai --model gpt-4o
+  ```
+
+---
+
+### Developer AI Commands (Phase 8)
+
+#### 1. Ask Questions (`msk ask`)
+
+Ask natural-language questions about your codebase. MSK selects relevant, privacy-scrubbed context, verifies external transmission permissions against your policy, and presents answers with citations:
+
+```bash
+# Query with default provider
+msk ask "How does the payment processing flow handle negative amounts?"
+
+# Target external provider explicitly
+msk ask "Explain database migration strategy" --target external
+
+# Specify budget and emit JSON
+msk ask "List all authentication endpoints" --budget 1500 --json
+```
+
+#### 2. Explain Code & Incidents (`msk explain`)
+
+Diagnose runtime exceptions, explain architectural components, or inspect symbols:
+
+```bash
+# Explain a specific file
+msk explain --file src/payment/service.py
+
+# Explain a symbol and its callers
+msk explain --symbol process_payment --file src/payment/service.py
+
+# Diagnose a runtime error trace
+msk explain --error "ValueError: Invalid currency in process_payment"
+
+# Diagnose an incident from a log file
+msk explain --error-file logs/incident_trace.log --json
+```
 ---
 
 ## Privacy & Security
@@ -379,6 +449,8 @@ msk/
 ├── changes/       # SHA-256 content and structural fingerprinting, Git integration
 ├── impact/        # Impact analysis engine, graph traversal, deterministic reporting
 ├── context/       # Smart Context Engine: ranking, token budgeting, privacy scrubbing
+├── policy/        # Privacy policy models, auditor, and PolicyGatedGateway
+├── gateway/       # Pluggable AI adapters (Mock, Ollama, Local OpenAI, OpenAI, Anthropic, Gemini)
 └── cli/           # Typer CLI commands with Rich terminal UI
 ```
 
@@ -434,7 +506,7 @@ pip-audit
 
 This is `v0.1.0-alpha.1`. The following limitations apply:
 
-- **No AI/LLM integration yet**: MSK currently builds and maintains the knowledge model locally. AI query commands (`msk ask`, `msk explain`) are planned for future phases.
+- **Pluggable AI Gateways**: MSK Phase 8 supports local and external AI models with strict privacy boundaries and zero third-party vendor SDK bloat.
 - **Limited language support**: Python, Java, TypeScript, and JavaScript parsers currently enabled.
 - **No remote/cloud features**: Everything runs 100% locally on your machine.
 - **Schema evolution**: Non-destructive migrations keep SQLite schema backwards compatible across updates.
@@ -449,9 +521,10 @@ This is `v0.1.0-alpha.1`. The following limitations apply:
 - [x] **Phase 3**: Incremental Change Engine & Knowledge Model Consistency
 - [x] **Phase 4**: Impact Analysis Engine
 - [x] **Phase 5**: Smart Context Engine & Local Privacy Boundary
-- [ ] **Phase 6**: Pluggable AI / LLM Gateway (Local & Cloud)
-- [ ] **Phase 7**: AI Commands (`msk ask`, `msk explain`, `msk fix`)
-- [ ] **Phase 8**: Error & Incident Investigation
+- [x] **Phase 6**: Privacy Policy Enforcement
+- [x] **Phase 7**: Policy Integration & Autonomous Enforcement
+- [x] **Phase 8**: Pluggable AI Gateway, Provider Management, Model Configuration & Developer AI Commands
+- [ ] **Phase 9**: Error & Incident Autonomous Remediation (`msk fix`)
 
 ---
 

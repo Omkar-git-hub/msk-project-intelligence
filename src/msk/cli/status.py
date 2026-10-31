@@ -80,7 +80,6 @@ def run_status(root: Path | None = None) -> None:
         console.print(f"Infrastructure: [bold green]{summary.total_infrastructure:,}[/bold green]")
     console.print()
 
-
     console.print("Git:")
     if git_state.is_repo:
         console.print(f"  Branch: [cyan]{git_state.branch or 'detached'}[/cyan]")
@@ -108,6 +107,19 @@ def run_status(root: Path | None = None) -> None:
     console.print(f"  Allowed Providers: [dim]{', '.join(policy_summary['allowed_providers']) or 'none'}[/dim]")
     console.print(f"  Audit Events:     [dim]{policy_summary['audit_events_count']}[/dim]")
     console.print()
+
+    try:
+        from msk.gateway.configuration import ProviderConfigurationManager
+
+        provider_mgr = ProviderConfigurationManager(project_root)
+        default_p = provider_mgr.get_default_provider()
+        console.print("AI Gateway:")
+        console.print(f"  Default Provider: [cyan]{default_p.display_name}[/cyan] ({default_p.provider_id})")
+        console.print(f"  Default Model:    [cyan]{default_p.default_model or 'default'}[/cyan]")
+        console.print(f"  Type:             [dim]{default_p.provider_type.value}[/dim]")
+        console.print()
+    except Exception:
+        pass
 
     status_color = "bold green" if summary.status == "READY" else "bold yellow"
     console.print(f"Status: [{status_color}]{summary.status}[/{status_color}]")

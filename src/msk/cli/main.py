@@ -6,11 +6,14 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from msk.cli.ask import run_ask
 from msk.cli.context import run_context
 from msk.cli.doctor import run_doctor
+from msk.cli.explain import run_explain
 from msk.cli.impact import run_impact
 from msk.cli.init import run_init
 from msk.cli.policy import policy_app
+from msk.cli.provider import provider_app
 from msk.cli.status import run_status
 from msk.cli.update import run_update
 from msk.common.errors import MSKError
@@ -25,6 +28,7 @@ app = typer.Typer(
 
 # Register policy command group
 app.add_typer(policy_app, name="policy")
+app.add_typer(provider_app, name="provider")
 
 console = Console()
 
@@ -213,6 +217,100 @@ def context_command(
         if exc.hint:
             console.print(f"[yellow]Run:[/yellow] {exc.hint}")
         sys.exit(1)
+    except Exception as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]Unexpected Error:[/bold red] {exc}")
+        console.print("[dim]Use --debug to see full traceback.[/dim]")
+        sys.exit(1)
+
+
+
+
+@app.command("ask")
+def ask_command(
+    ctx: typer.Context,
+    question: str = typer.Argument(..., help="Developer query, task, or question"),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Target project file to focus context on"),
+    symbol: str | None = typer.Option(None, "--symbol", "-s", help="Target function, method, or class symbol"),
+    error: str | None = typer.Option(None, "--error", "-e", help="Error text or stack trace to analyze"),
+    budget: int = typer.Option(2000, "--budget", "-b", help="Context token budget limit"),
+    provider: str | None = typer.Option(None, "--provider", "-p", help="Target AI provider name"),
+    model: str | None = typer.Option(None, "--model", "-m", help="Specific model ID to use"),
+    target: str | None = typer.Option(None, "--target", "-t", help="Transmission target: 'local' or 'external'"),
+    json_output: bool = typer.Option(False, "--json", help="Output results in machine-readable JSON format"),
+    root: Path | None = typer.Option(None, "--root", "-r", help="Explicit project root directory"),
+) -> None:
+    """Ask software engineering questions grounded in policy-approved project context."""
+    debug = ctx.obj.get("debug", False)
+    try:
+        run_ask(
+            question=question,
+            file=file,
+            symbol=symbol,
+            error=error,
+            budget=budget,
+            provider=provider,
+            model=model,
+            target=target,
+            json_output=json_output,
+            root=root,
+        )
+    except MSKError as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]MSK Error:[/bold red] {exc.message}")
+        if exc.hint:
+            console.print(f"[yellow]Run:[/yellow] {exc.hint}")
+        sys.exit(1)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]Unexpected Error:[/bold red] {exc}")
+        console.print("[dim]Use --debug to see full traceback.[/dim]")
+        sys.exit(1)
+
+
+@app.command("explain")
+def explain_command(
+    ctx: typer.Context,
+    file: Path | None = typer.Option(None, "--file", "-f", help="Target project file to explain"),
+    symbol: str | None = typer.Option(None, "--symbol", "-s", help="Target function, method, or class symbol"),
+    error: str | None = typer.Option(None, "--error", "-e", help="Error text or stack trace to diagnose"),
+    error_file: Path | None = typer.Option(None, "--error-file", help="Path to file containing error log or stack trace"),
+    budget: int = typer.Option(2500, "--budget", "-b", help="Context token budget limit"),
+    provider: str | None = typer.Option(None, "--provider", "-p", help="Target AI provider name"),
+    model: str | None = typer.Option(None, "--model", "-m", help="Specific model ID to use"),
+    target: str | None = typer.Option(None, "--target", "-t", help="Transmission target: 'local' or 'external'"),
+    json_output: bool = typer.Option(False, "--json", help="Output results in machine-readable JSON format"),
+    root: Path | None = typer.Option(None, "--root", "-r", help="Explicit project root directory"),
+) -> None:
+    """Explain code architecture, symbol relationships, or diagnose runtime errors."""
+    debug = ctx.obj.get("debug", False)
+    try:
+        run_explain(
+            file=file,
+            symbol=symbol,
+            error=error,
+            error_file=error_file,
+            budget=budget,
+            provider=provider,
+            model=model,
+            target=target,
+            json_output=json_output,
+            root=root,
+        )
+    except MSKError as exc:
+        if debug:
+            raise
+        console.print(f"[bold red]MSK Error:[/bold red] {exc.message}")
+        if exc.hint:
+            console.print(f"[yellow]Run:[/yellow] {exc.hint}")
+        sys.exit(1)
+    except typer.Exit:
+        raise
     except Exception as exc:
         if debug:
             raise

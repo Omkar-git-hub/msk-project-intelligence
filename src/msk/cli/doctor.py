@@ -135,6 +135,39 @@ def run_doctor(root: Path | None = None) -> bool:
     else:
         table.add_row("Privacy Policy", "[bold yellow]INFO[/bold yellow]", "Not initialized (run 'msk init')")
 
+    # 8. AI Provider Configuration
+    if msk_dir.is_dir():
+        from msk.gateway.configuration import ProviderConfigurationManager
+        from msk.gateway.credentials import CredentialManager
+
+        provider_mgr = ProviderConfigurationManager(project_root)
+        if provider_mgr.config_path.is_file():
+            try:
+                providers_doc = provider_mgr.load()
+                providers_list = providers_doc.providers
+                enabled_count = sum(1 for p in providers_list if p.enabled)
+                default_p = provider_mgr.get_default_provider()
+                cred_mgr = CredentialManager()
+                cred_status = cred_mgr.get_credential_status(default_p.credential_ref)
+                auth_info = "None" if default_p.auth_type.value == "none" else cred_status["display"]
+                details = (
+                    f"{len(providers_list)} configured ({enabled_count} enabled) | "
+                    f"Default: {default_p.display_name} | "
+                    f"Auth: {auth_info}"
+                )
+                table.add_row("AI Providers", "[bold green]PASS[/bold green]", details)
+            except Exception as exc:
+                all_ok = False
+                table.add_row("AI Providers", "[bold red]FAIL[/bold red]", f"Invalid provider config: {exc}")
+        else:
+            table.add_row(
+                "AI Providers",
+                "[bold yellow]INFO[/bold yellow]",
+                "Default mock provider active (.msk/config/providers.json missing)",
+            )
+    else:
+        table.add_row("AI Providers", "[bold yellow]INFO[/bold yellow]", "Not initialized (run 'msk init')")
+
     console.print()
     console.print(table)
     console.print()
