@@ -1,0 +1,278 @@
+
+name: MSK GitHub Release Deployment
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msk-release-deployment
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    if: >-
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'release')
+
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runner: windows-latest
+            asset: msk-windows.exe
+
+          - platform: linux
+            runner: ubuntu-latest
+            asset: msk-linux
+
+          - platform: macos
+            runner: macos-latest
+            asset: msk-macos
+
+    steps:
+      - name: Checkout merged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Read release version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: v${VERSION}"
+
+      - name: Install MSK and build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install nuitka
+
+      - name: Build Windows executable
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          .\scripts\build_windows.ps1
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item msk.exe "dist/${{ matrix.asset }}"
+
+      - name: Build Linux executable
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          python -m nuitka \
+            --onefile \
+            --assume-yes-for-downloads \
+            --output-dir=dist \
+            --output-filename="${{ matrix.asset }}" \
+            --include-package=msk \
+            src/msk/cli/main.py
+
+      - name: Build macOS executable
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          python -m nuitka \
+            --onefile \
+            --assume-yes-for-downloads \
+            --output-dir=dist \
+            --output-filename="${{ matrix.asset }}" \
+            --include-package=msk \
+            src/msk/cli/main.py
+
+      - name: Verify executable
+        shell: bash
+        run: |
+          set -e
+          test -f "dist/${{ matrix.asset }}"
+          ls -lh "dist/${{ matrix.asset }}"
+          chmod +x "dist/${{ matrix.asset }}"
+          "./dist/${{ matrix.asset }}" --help
+
+      - name: Upload platform artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: msk-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish MSK Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout merged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Read release metadata
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: v${VERSION}"
+
+      - name: Download platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          cd release-assets
+
+          sha256sum msk-windows.exe > msk-windows.exe.sha256
+          sha256sum msk-linux > msk-linux.sha256
+          sha256sum msk-macos > msk-macos.sha256
+
+      - name: Verify release assets
+        shell: bash
+        run: |
+          set -e
+
+          echo "Release assets:"
+          find release-assets -maxdepth 1 -type f -print
+
+          test -f release-assets/msk-windows.exe
+          test -f release-assets/msk-linux
+          test -f release-assets/msk-macos
+
+          test -f release-assets/msk-windows.exe.sha256
+          test -f release-assets/msk-linux.sha256
+          test -f release-assets/msk-macos.sha256
+
+      - name: Check release tag does not already exist
+        env:
+          GH_TOKEN: ${{ secrets.MSK_RELEASES_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          if gh release view "$VERSION" --repo Omkar-git-hub/msk-releases >/dev/null 2>&1; then
+            echo "Release $VERSION already exists."
+            exit 1
+          fi
+
+      - name: Checkout release repository
+        uses: actions/checkout@v4
+        with:
+          repository: Omkar-git-hub/msk-releases
+          token: ${{ secrets.MSK_RELEASES_TOKEN }}
+          path: release-repo
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: Omkar-git-hub/msk-releases
+          token: ${{ secrets.MSK_RELEASES_TOKEN }}
+          tag_name: ${{ steps.version.outputs.version }}
+          name: MSK ${{ steps.version.outputs.version }}
+          target_commitish: main
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: release-assets/*
+          fail_on_unmatched_files: true
+          body: |
+            ## MSK ${{ steps.version.outputs.version }}
+
+            Official standalone builds of MSK.
+
+            Source commit: ${{ github.event.pull_request.merge_commit_sha }}
+
+            ### Platform packages
+
+            - Windows: msk-windows.exe
+            - Linux: msk-linux
+            - macOS: msk-macos
+
+            SHA256 checksum files are included for integrity verification.
+
+            Source repository:
+            https://github.com/Omkar-git-hub/msk-project-intelligence
+
+      - name: Update release README
+        working-directory: release-repo
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          readme = Path("README.md")
+
+          start = "<!-- LATEST_RELEASE_START -->"
+          end = "<!-- LATEST_RELEASE_END -->"
+
+          section = f"""<!-- LATEST_RELEASE_START -->
+          ## Latest Release: {version}
+
+          Download MSK for your operating system:
+
+          | Platform | Package | Download |
+          |---|---|---|
+          | Windows | EXE | [msk-windows.exe](https://github.com/Omkar-git-hub/msk-releases/releases/download/{version}/msk-windows.exe) |
+          | Linux | Binary | [msk-linux](https://github.com/Omkar-git-hub/msk-releases/releases/download/{version}/msk-linux) |
+          | macOS | Binary | [msk-macos](https://github.com/Omkar-git-hub/msk-releases/releases/download/{version}/msk-macos) |
+
+          SHA256 checksums are available in the release assets.
+
+          [View release notes and all downloads](https://github.com/Omkar-git-hub/msk-releases/releases/tag/{version})
+          <!-- LATEST_RELEASE_END -->"""
+
+          content = readme.read_text(encoding="utf-8") if readme.exists() else ""
+
+          if start in content and end in content:
+              before = content.split(start, 1)[0]
+              after = content.split(end, 1)[1]
+              content = before + section + after
+          else:
+              content = section + "\n\n" + content
+
+          readme.write_text(content, encoding="utf-8")
+          PY
+
+      - name: Commit README update
+        working-directory: release-repo
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: update latest MSK release"
+            git push origin main
+          else
+            echo "README is already up to date."
+          fi
