@@ -14,6 +14,7 @@ from msk.cli.impact import run_impact
 from msk.cli.init import run_init
 from msk.cli.policy import policy_app
 from msk.cli.provider import provider_app
+from msk.cli.runtime import runtime_app
 from msk.cli.status import run_status
 from msk.cli.update import run_update
 from msk.common.errors import MSKError
@@ -29,6 +30,7 @@ app = typer.Typer(
 # Register policy command group
 app.add_typer(policy_app, name="policy")
 app.add_typer(provider_app, name="provider")
+app.add_typer(runtime_app, name="runtime")
 
 console = Console()
 

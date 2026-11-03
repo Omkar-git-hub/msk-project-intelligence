@@ -151,6 +151,49 @@ CREATE TABLE IF NOT EXISTS policy_audit_logs (
 CREATE INDEX IF NOT EXISTS idx_policy_audit_logs_project ON policy_audit_logs(project_id);
 CREATE INDEX IF NOT EXISTS idx_policy_audit_logs_timestamp ON policy_audit_logs(timestamp);
 CREATE INDEX IF NOT EXISTS idx_policy_audit_logs_outcome ON policy_audit_logs(outcome);
+
+CREATE TABLE IF NOT EXISTS runtime_events (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    timestamp TEXT NOT NULL,
+    level TEXT NOT NULL,
+    source TEXT,
+    message TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    file_path TEXT,
+    line_number INTEGER,
+    symbol_name TEXT,
+    exception_type TEXT,
+    stack_trace_json TEXT,
+    attributes_json TEXT,
+    fingerprint TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_runtime_events_project ON runtime_events(project_id);
+CREATE INDEX IF NOT EXISTS idx_runtime_events_timestamp ON runtime_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_runtime_events_level ON runtime_events(level);
+CREATE INDEX IF NOT EXISTS idx_runtime_events_fingerprint ON runtime_events(fingerprint);
+CREATE INDEX IF NOT EXISTS idx_runtime_events_file ON runtime_events(file_path);
+
+CREATE TABLE IF NOT EXISTS runtime_errors (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    fingerprint TEXT NOT NULL UNIQUE,
+    exception_type TEXT NOT NULL,
+    message_template TEXT NOT NULL,
+    first_seen TEXT NOT NULL,
+    last_seen TEXT NOT NULL,
+    occurrence_count INTEGER NOT NULL DEFAULT 1,
+    severity TEXT NOT NULL,
+    file_path TEXT,
+    line_number INTEGER,
+    symbol_name TEXT,
+    sample_event_id TEXT REFERENCES runtime_events(id) ON DELETE SET NULL,
+    resolved INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_runtime_errors_project ON runtime_errors(project_id);
+CREATE INDEX IF NOT EXISTS idx_runtime_errors_fingerprint ON runtime_errors(fingerprint);
+CREATE INDEX IF NOT EXISTS idx_runtime_errors_severity ON runtime_errors(severity);
 """
 
 
