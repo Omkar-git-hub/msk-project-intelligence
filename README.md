@@ -117,6 +117,7 @@ msk init --force
 | `msk provider` | Configure, list, and test local/cloud AI providers and models          |
 | `msk ask`      | Query project intelligence and AI with policy-approved context         |
 | `msk explain`  | Explain files, code symbols, or diagnose runtime error logs            |
+| `msk runtime`  | Local-first runtime intelligence, log parsing, error correlation       |
 | `msk doctor`   | Diagnose environment: Python, Tree-sitter parsers, Git, database       |
 
 ### Global Options
@@ -421,6 +422,85 @@ msk explain --error-file logs/incident_trace.log --json
 ```
 ---
 
+
+---
+
+### Runtime Intelligence & Correlation (Phase 9)
+
+MSK Phase 9 introduces local-first runtime intelligence, correlating empirical observations (application logs, exceptions, stack traces, API requests, and performance metrics) directly with static project intelligence:
+
+#### 1. Ingest Application Logs (`msk runtime logs`)
+
+Parse multi-format logs (structured JSON, standard timestamped logs, syslog) with automatic secret scrubbing:
+
+```bash
+# Ingest application logs from a file
+msk runtime logs --file logs/app.log
+
+# Ingest and display in JSON format
+msk runtime logs --file logs/app.log --limit 50 --json
+
+# Test parse raw log text without persisting (dry-run)
+msk runtime logs --raw "[ERROR] Connection timed out to cache" --no-save
+```
+
+#### 2. Analyze Runtime Errors & Blast Radius (`msk runtime analyze`)
+
+Analyze an active stack trace or incident file, identify affected code symbols, map downstream callers and dependent modules, and produce an actionable investigation checklist:
+
+```bash
+# Analyze a stack trace or error log file
+msk runtime analyze --file crash.log
+
+# Analyze raw traceback text
+msk runtime analyze --raw "Traceback (most recent call last):\n  File \"src/order.py\", line 42, in process_order\n    raise ValueError(\"invalid amount\")\nValueError: invalid amount"
+
+# Emit complete empirical facts and static inferences in JSON
+msk runtime analyze --file crash.log --json
+```
+
+#### 3. Error Tracking & Deduplication (`msk runtime errors`)
+
+Inspect recurring errors grouped by normalized fingerprints, occurrence count, first/last seen timestamps, and resolution status:
+
+```bash
+# List all recorded runtime errors
+msk runtime errors
+
+# Show only unresolved errors
+msk runtime errors --unresolved
+
+# Mark an error as resolved
+msk runtime errors --resolve rterr_abc123
+```
+
+#### 4. Correlate Runtime Incidents with Knowledge Graph (`msk runtime correlate`)
+
+Map a runtime failure directly onto affected source files, enclosing functions, callers/callees, related tests, and user-facing API endpoints:
+
+```bash
+# Correlate the latest recorded error
+msk runtime correlate --latest
+
+# Correlate a specific error ID or fingerprint
+msk runtime correlate rterr_abc123
+```
+
+#### 5. Timeline History & Retention (`msk runtime history`, `msk runtime prune`)
+
+Inspect chronological events and manage storage footprint locally:
+
+```bash
+# View recent event timeline
+msk runtime history --limit 30 --level ERROR
+
+# Prune older events beyond 30 days retention
+msk runtime prune --days 30 --max-events 1000
+
+# Clear all runtime observations for the project
+msk runtime prune --clear
+```
+
 ## Privacy & Security
 
 MSK is designed with privacy as a core architectural concern:
@@ -451,6 +531,7 @@ msk/
 ├── context/       # Smart Context Engine: ranking, token budgeting, privacy scrubbing
 ├── policy/        # Privacy policy models, auditor, and PolicyGatedGateway
 ├── gateway/       # Pluggable AI adapters (Mock, Ollama, Local OpenAI, OpenAI, Anthropic, Gemini)
+├── runtime/       # Multi-format log parser, error grouping, static-to-runtime correlation & impact
 └── cli/           # Typer CLI commands with Rich terminal UI
 ```
 
@@ -524,7 +605,8 @@ This is `v0.1.0-alpha.1`. The following limitations apply:
 - [x] **Phase 6**: Privacy Policy Enforcement
 - [x] **Phase 7**: Policy Integration & Autonomous Enforcement
 - [x] **Phase 8**: Pluggable AI Gateway, Provider Management, Model Configuration & Developer AI Commands
-- [ ] **Phase 9**: Error & Incident Autonomous Remediation (`msk fix`)
+- [x] **Phase 9**: Local-First Runtime Intelligence & Static-Runtime Correlation (`msk runtime`)
+- [ ] **Phase 10**: Error & Incident Autonomous Remediation (`msk fix`)
 
 ---
 

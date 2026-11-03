@@ -168,6 +168,26 @@ def run_doctor(root: Path | None = None) -> bool:
     else:
         table.add_row("AI Providers", "[bold yellow]INFO[/bold yellow]", "Not initialized (run 'msk init')")
 
+
+    # 9. Runtime Intelligence Storage
+    if msk_dir.is_dir() and db_path.is_file():
+        try:
+            from msk.runtime.storage import RuntimeStorage
+            from msk.storage.database import DatabaseManager
+
+            db_m = DatabaseManager(db_path)
+            rt_s = RuntimeStorage(db_m)
+            summary_rt = rt_s.get_status_summary(project_root.name, project_root.name)
+            table.add_row(
+                "Runtime Intelligence",
+                "[bold green]PASS[/bold green]",
+                f"Tables ready | Ingested: {summary_rt.total_events} events | Active errors: {summary_rt.total_unresolved_errors}",
+            )
+        except Exception as exc:
+            all_ok = False
+            table.add_row("Runtime Intelligence", "[bold red]FAIL[/bold red]", f"Runtime storage check error: {exc}")
+    else:
+        table.add_row("Runtime Intelligence", "[bold yellow]INFO[/bold yellow]", "Not initialized (run 'msk init')")
     console.print()
     console.print(table)
     console.print()

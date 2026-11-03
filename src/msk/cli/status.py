@@ -121,6 +121,21 @@ def run_status(root: Path | None = None) -> None:
     except Exception:
         pass
 
+    try:
+        from msk.runtime.storage import RuntimeStorage
+
+        runtime_storage = RuntimeStorage(db_manager)
+        rt_summary = runtime_storage.get_status_summary(config.id, config.name)
+        if rt_summary.total_events > 0 or rt_summary.total_errors > 0:
+            console.print("Runtime:")
+            console.print(f"  Events Ingested:  [cyan]{rt_summary.total_events}[/cyan]")
+            console.print(f"  Errors Recorded:  [red]{rt_summary.total_errors}[/red] ([yellow]{rt_summary.total_unresolved_errors} unresolved[/yellow])")
+            if rt_summary.last_event_timestamp:
+                console.print(f"  Last Event:       [dim]{_format_time_ago(rt_summary.last_event_timestamp)}[/dim]")
+            console.print()
+    except Exception:
+        pass
+
     status_color = "bold green" if summary.status == "READY" else "bold yellow"
     console.print(f"Status: [{status_color}]{summary.status}[/{status_color}]")
     console.print()
