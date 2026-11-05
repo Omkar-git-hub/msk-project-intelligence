@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
+  pull-requests: read
 
 concurrency:
   group: msk-release-deployment
@@ -38,9 +39,14 @@ jobs:
 
           TAG="${GITHUB_REF_NAME}"
 
-          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          VERSION=$(python -c "
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
+          print(data['project']['version'])
+          ")
 
-          if [ "$TAG" != "v${VERSION}" ]; then
+          if [[ "$TAG" != "v${VERSION}" ]]; then
             echo "Tag does not match pyproject.toml version."
             exit 1
           fi
@@ -50,63 +56,110 @@ jobs:
           git fetch origin main --no-tags
 
           if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
-            echo "Tag does not point to a commit reachable from main."
+            echo "Tag is not reachable from main."
             exit 1
           fi
 
           PARENTS=$(git rev-list --parents -n 1 "$TAG_COMMIT")
+          read -r -a PARENT_ARRAY <<< "$PARENTS"
 
-          set -- $PARENTS
-
-          if [ "$#" -ne 3 ]; then
-            echo "Expected a production merge commit with exactly two parents."
-            echo "Use GitHub Create a merge commit for release PRs."
+          if [[ "${#PARENT_ARRAY[@]}" -ne 3 ]]; then
+            echo "Expected a merge commit with exactly two parents."
+            echo "Use Create a merge commit for release PRs."
             exit 1
           fi
 
-          RELEASE_HEAD_SHA="$3"
+          RELEASE_HEAD_SHA="${PARENT_ARRAY[2]}"
           SOURCE_TREE_SHA=$(git rev-parse "${TAG_COMMIT}^{tree}")
 
           echo "version=${TAG}" >> "$GITHUB_OUTPUT"
           echo "release_head_sha=${RELEASE_HEAD_SHA}" >> "$GITHUB_OUTPUT"
           echo "source_tree_sha=${SOURCE_TREE_SHA}" >> "$GITHUB_OUTPUT"
 
-          echo "Production version: ${TAG}"
-          echo "Release source commit: ${RELEASE_HEAD_SHA}"
+          echo "Version: ${TAG}"
+          echo "Release source: ${RELEASE_HEAD_SHA}"
 
       - name: Find successful release validation run
         id: validation
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_HEAD_SHA: ${{ steps.release.outputs.release_head_sha }}
+          VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
 
-          RUN_ID=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/release-validation.yml/runs?head_sha=${RELEASE_HEAD_SHA}&status=success&per_page=100" \
-            --jq '
+          RELEASE_BRANCH="release/${VERSION#v}"
+
+          RUNS_JSON=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/release-validation.yml/runs?branch=${RELEASE_BRANCH}&event=pull_request&status=completed&per_page=100")
+
+          RUN_ID=""
+          PR_NUMBER=""
+
+          while IFS= read -r CANDIDATE_RUN; do
+            [[ -z "$CANDIDATE_RUN" ]] && continue
+
+            RUN_DATA=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${CANDIDATE_RUN}")
+
+            PR_DATA=$(echo "$RUN_DATA" | jq -c '.pull_requests[0] // empty')
+            [[ -z "$PR_DATA" ]] && continue
+
+            CANDIDATE_PR=$(echo "$PR_DATA" | jq -r '.number')
+            CANDIDATE_HEAD=$(echo "$PR_DATA" | jq -r '.head.sha')
+            CANDIDATE_BASE=$(echo "$PR_DATA" | jq -r '.base.ref')
+
+            if [[ "$CANDIDATE_HEAD" == "$RELEASE_HEAD_SHA" ]] &&
+               [[ "$CANDIDATE_BASE" == "main" ]]; then
+              RUN_ID="$CANDIDATE_RUN"
+              PR_NUMBER="$CANDIDATE_PR"
+              break
+            fi
+          done < <(
+            echo "$RUNS_JSON" | jq -r '
               [
                 .workflow_runs[]
                 | select(
-                    .event == "pull_request" and
-                    .conclusion == "success" and
-                    (.head_branch | startswith("release/"))
+                    .status == "completed" and
+                    .conclusion == "success"
                   )
               ]
               | sort_by(.created_at)
-              | last
-              | .id // empty
-            ')
+              | reverse
+              | .[].id
+            '
+          )
 
-          if [ -z "$RUN_ID" ]; then
-            echo "No successful release validation run found."
+          if [[ -z "$RUN_ID" || -z "$PR_NUMBER" ]]; then
+            echo "No successful validation run found for the release commit."
+            exit 1
+          fi
+
+          PR_DATA=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}")
+
+          PR_BASE=$(echo "$PR_DATA" | jq -r '.base.ref')
+          PR_HEAD=$(echo "$PR_DATA" | jq -r '.head.sha')
+          PR_BRANCH=$(echo "$PR_DATA" | jq -r '.head.ref')
+          PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
+          PR_MERGED=$(echo "$PR_DATA" | jq -r '.merged')
+
+          if [[ "$PR_BASE" != "main" ]] ||
+             [[ "$PR_HEAD" != "$RELEASE_HEAD_SHA" ]] ||
+             [[ "$PR_BRANCH" != "$RELEASE_BRANCH" ]] ||
+             [[ "$PR_STATE" != "closed" ]] ||
+             [[ "$PR_MERGED" != "true" ]]; then
+            echo "Release PR verification failed."
             exit 1
           fi
 
           echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "release_branch=${RELEASE_BRANCH}" >> "$GITHUB_OUTPUT"
 
           echo "Validation run: ${RUN_ID}"
+          echo "Merged PR: #${PR_NUMBER}"
 
       - name: Download validated release artifacts
         uses: actions/download-artifact@v4
@@ -123,6 +176,8 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
           RELEASE_HEAD_SHA: ${{ steps.release.outputs.release_head_sha }}
           SOURCE_TREE_SHA: ${{ steps.release.outputs.source_tree_sha }}
+          RELEASE_BRANCH: ${{ steps.validation.outputs.release_branch }}
+          PR_NUMBER: ${{ steps.validation.outputs.pr_number }}
         shell: bash
         run: |
           set -euo pipefail
@@ -132,16 +187,21 @@ jobs:
           import os
           from pathlib import Path
 
+          manifest_path = Path("release-assets/release-manifest.json")
+
+          if not manifest_path.is_file():
+              raise SystemExit("Release manifest is missing.")
+
           manifest = json.loads(
-              Path("release-assets/release-manifest.json").read_text(
-                  encoding="utf-8"
-              )
+              manifest_path.read_text(encoding="utf-8")
           )
 
           checks = {
               "version": os.environ["VERSION"].removeprefix("v"),
               "release_head_sha": os.environ["RELEASE_HEAD_SHA"],
-              "source_tree_sha": os.environ["SOURCE_TREE_SHA"]
+              "source_tree_sha": os.environ["SOURCE_TREE_SHA"],
+              "release_branch": os.environ["RELEASE_BRANCH"],
+              "pull_request": int(os.environ["PR_NUMBER"]),
           }
 
           for key, expected in checks.items():
@@ -160,7 +220,7 @@ jobs:
           test -s release-assets/msk-linux
           test -s release-assets/msk-macos
 
-          echo "All three platform artifacts verified."
+          echo "All platform artifacts verified."
 
       - name: Generate SHA256 checksums
         shell: bash
@@ -185,14 +245,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          if gh api \
+          gh api --include \
             "repos/Omkar-git-hub/msk-releases/releases/tags/${VERSION}" \
-            >/dev/null 2>&1; then
+            > api-response.txt 2>&1 || true
 
+          HTTP_STATUS=$(sed -n '1s#^HTTP/[0-9.]* \([0-9][0-9][0-9]\).*#\1#p' api-response.txt)
+
+          rm -f api-response.txt
+
+          if [[ "$HTTP_STATUS" == "404" ]]; then
+            echo "Release does not exist. Safe to continue."
+          elif [[ "$HTTP_STATUS" == "200" ]]; then
             echo "Release ${VERSION} already exists."
             exit 1
           else
-            echo "Release tag is available."
+            echo "Unable to verify release existence."
+            echo "HTTP status: ${HTTP_STATUS:-unknown}"
+            exit 1
           fi
 
       - name: Checkout release repository
@@ -240,6 +309,8 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
+          set -euo pipefail
+
           python - <<'PY'
           import os
           from pathlib import Path
@@ -266,7 +337,11 @@ jobs:
           [View release notes and all downloads](https://github.com/Omkar-git-hub/msk-releases/releases/tag/{version})
           <!-- LATEST_RELEASE_END -->"""
 
-          content = readme.read_text(encoding="utf-8") if readme.exists() else ""
+          content = (
+              readme.read_text(encoding="utf-8")
+              if readme.exists()
+              else ""
+          )
 
           if start in content and end in content:
               before = content.split(start, 1)[0]
@@ -282,6 +357,8 @@ jobs:
         working-directory: release-repo
         shell: bash
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
