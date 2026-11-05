@@ -1,182 +1,198 @@
-
 name: MSK GitHub Release Deployment
 
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - main
+  push:
+    tags:
+      - "v*.*.*"
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: msk-release-deployment
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build ${{ matrix.platform }}
-    if: >-
-      github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.labels.*.name, 'release')
-
-    runs-on: ${{ matrix.runner }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: windows
-            runner: windows-latest
-            asset: msk-windows.exe
-
-          - platform: linux
-            runner: ubuntu-latest
-            asset: msk-linux
-
-          - platform: macos
-            runner: macos-latest
-            asset: msk-macos
-
-    steps:
-      - name: Checkout merged source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
-      - name: Read release version
-        id: version
-        shell: bash
-        run: |
-          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Release version: v${VERSION}"
-
-      - name: Install MSK and build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
-          python -m pip install nuitka
-
-      - name: Build Windows executable
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          .\scripts\build_windows.ps1
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item msk.exe "dist/${{ matrix.asset }}"
-
-      - name: Build Linux executable
-        if: matrix.platform == 'linux'
-        shell: bash
-        run: |
-          python -m nuitka \
-            --onefile \
-            --assume-yes-for-downloads \
-            --output-dir=dist \
-            --output-filename="${{ matrix.asset }}" \
-            --include-package=msk \
-            src/msk/cli/main.py
-
-      - name: Build macOS executable
-        if: matrix.platform == 'macos'
-        shell: bash
-        run: |
-          python -m nuitka \
-            --onefile \
-            --assume-yes-for-downloads \
-            --output-dir=dist \
-            --output-filename="${{ matrix.asset }}" \
-            --include-package=msk \
-            src/msk/cli/main.py
-
-      - name: Verify executable
-        shell: bash
-        run: |
-          set -e
-          test -f "dist/${{ matrix.asset }}"
-          ls -lh "dist/${{ matrix.asset }}"
-          chmod +x "dist/${{ matrix.asset }}"
-          "./dist/${{ matrix.asset }}" --help
-
-      - name: Upload platform artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: msk-${{ matrix.platform }}
-          path: dist/*
-          if-no-files-found: error
-          retention-days: 7
-
   publish:
     name: Publish MSK Release
-    needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout merged source
+      - name: Checkout tagged source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
 
-      - name: Read release metadata
-        id: version
+      - name: Validate production tag
+        id: release
         shell: bash
         run: |
-          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Release version: v${VERSION}"
+          set -euo pipefail
 
-      - name: Download platform artifacts
+          TAG="${GITHUB_REF_NAME}"
+
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+
+          if [ "$TAG" != "v${VERSION}" ]; then
+            echo "Tag does not match pyproject.toml version."
+            exit 1
+          fi
+
+          TAG_COMMIT=$(git rev-parse HEAD)
+
+          git fetch origin main --no-tags
+
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
+            echo "Tag does not point to a commit reachable from main."
+            exit 1
+          fi
+
+          PARENTS=$(git rev-list --parents -n 1 "$TAG_COMMIT")
+
+          set -- $PARENTS
+
+          if [ "$#" -ne 3 ]; then
+            echo "Expected a production merge commit with exactly two parents."
+            echo "Use GitHub Create a merge commit for release PRs."
+            exit 1
+          fi
+
+          RELEASE_HEAD_SHA="$3"
+          SOURCE_TREE_SHA=$(git rev-parse "${TAG_COMMIT}^{tree}")
+
+          echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "release_head_sha=${RELEASE_HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "source_tree_sha=${SOURCE_TREE_SHA}" >> "$GITHUB_OUTPUT"
+
+          echo "Production version: ${TAG}"
+          echo "Release source commit: ${RELEASE_HEAD_SHA}"
+
+      - name: Find successful release validation run
+        id: validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_HEAD_SHA: ${{ steps.release.outputs.release_head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RUN_ID=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/release-validation.yml/runs?head_sha=${RELEASE_HEAD_SHA}&status=success&per_page=100" \
+            --jq '
+              [
+                .workflow_runs[]
+                | select(
+                    .event == "pull_request" and
+                    .conclusion == "success" and
+                    (.head_branch | startswith("release/"))
+                  )
+              ]
+              | sort_by(.created_at)
+              | last
+              | .id // empty
+            ')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful release validation run found."
+            exit 1
+          fi
+
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+
+          echo "Validation run: ${RUN_ID}"
+
+      - name: Download validated release artifacts
         uses: actions/download-artifact@v4
         with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.validation.outputs.run_id }}
+          pattern: msk-*
           path: release-assets
           merge-multiple: true
+
+      - name: Verify release manifest and artifacts
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_HEAD_SHA: ${{ steps.release.outputs.release_head_sha }}
+          SOURCE_TREE_SHA: ${{ steps.release.outputs.source_tree_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path("release-assets/release-manifest.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          checks = {
+              "version": os.environ["VERSION"].removeprefix("v"),
+              "release_head_sha": os.environ["RELEASE_HEAD_SHA"],
+              "source_tree_sha": os.environ["SOURCE_TREE_SHA"]
+          }
+
+          for key, expected in checks.items():
+              actual = manifest.get(key)
+
+              if actual != expected:
+                  raise SystemExit(
+                      f"Manifest mismatch for {key}: "
+                      f"expected {expected}, got {actual}"
+                  )
+
+          print("Release manifest verified.")
+          PY
+
+          test -s release-assets/msk-windows.exe
+          test -s release-assets/msk-linux
+          test -s release-assets/msk-macos
+
+          echo "All three platform artifacts verified."
 
       - name: Generate SHA256 checksums
         shell: bash
         run: |
+          set -euo pipefail
+
           cd release-assets
 
           sha256sum msk-windows.exe > msk-windows.exe.sha256
           sha256sum msk-linux > msk-linux.sha256
           sha256sum msk-macos > msk-macos.sha256
 
-      - name: Verify release assets
-        shell: bash
-        run: |
-          set -e
-
-          echo "Release assets:"
-          find release-assets -maxdepth 1 -type f -print
-
-          test -f release-assets/msk-windows.exe
-          test -f release-assets/msk-linux
-          test -f release-assets/msk-macos
-
-          test -f release-assets/msk-windows.exe.sha256
-          test -f release-assets/msk-linux.sha256
-          test -f release-assets/msk-macos.sha256
+          sha256sum -c msk-windows.exe.sha256
+          sha256sum -c msk-linux.sha256
+          sha256sum -c msk-macos.sha256
 
       - name: Check release tag does not already exist
         env:
           GH_TOKEN: ${{ secrets.MSK_RELEASES_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
-          if gh release view "$VERSION" --repo Omkar-git-hub/msk-releases >/dev/null 2>&1; then
-            echo "Release $VERSION already exists."
+          set -euo pipefail
+
+          if gh api \
+            "repos/Omkar-git-hub/msk-releases/releases/tags/${VERSION}" \
+            >/dev/null 2>&1; then
+
+            echo "Release ${VERSION} already exists."
             exit 1
+          else
+            echo "Release tag is available."
           fi
 
       - name: Checkout release repository
@@ -191,8 +207,8 @@ jobs:
         with:
           repository: Omkar-git-hub/msk-releases
           token: ${{ secrets.MSK_RELEASES_TOKEN }}
-          tag_name: ${{ steps.version.outputs.version }}
-          name: MSK ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.release.outputs.version }}
+          name: MSK ${{ steps.release.outputs.version }}
           target_commitish: main
           draft: false
           prerelease: false
@@ -200,11 +216,15 @@ jobs:
           files: release-assets/*
           fail_on_unmatched_files: true
           body: |
-            ## MSK ${{ steps.version.outputs.version }}
+            ## MSK ${{ steps.release.outputs.version }}
 
             Official standalone builds of MSK.
 
-            Source commit: ${{ github.event.pull_request.merge_commit_sha }}
+            Source repository:
+            https://github.com/Omkar-git-hub/msk-project-intelligence
+
+            Source production commit:
+            ${{ github.sha }}
 
             ### Platform packages
 
@@ -214,13 +234,10 @@ jobs:
 
             SHA256 checksum files are included for integrity verification.
 
-            Source repository:
-            https://github.com/Omkar-git-hub/msk-project-intelligence
-
       - name: Update release README
         working-directory: release-repo
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
           python - <<'PY'

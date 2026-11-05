@@ -55,6 +55,7 @@ jobs:
 
   build-windows:
     name: Windows Executable
+    if: github.event.pull_request.base.ref == 'develop'
     runs-on: windows-latest
     needs: test
 
